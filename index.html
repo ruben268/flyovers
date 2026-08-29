@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Flyovers Playbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f6f8; --panel:#ffffff; --panel-2:#fafbfc; --line:#e5e9ed;
+    --ink:#1c2430; --muted:#66727f; --muted-2:#9aa6b2;
+    --accent:#c04d32; --accent-ink:#ffffff; --accent-soft:rgba(192,77,50,.14);
+    --frisbee:#f5b301;
+    --field:#3e7c4a; --field-2:#3a7546; --chalk:#f0f5ee;
+    --o:#3d7bed;  --o-ink:#ffffff;   /* aanval = blauw */
+    --d:#ef4444;  --d-ink:#ffffff;   /* verdediging = rood */
+    --disc:#ffffff;
+    --radius:12px;
+    --shadow:0 6px 20px rgba(20,30,45,.10);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; overflow:hidden}
+  button{font-family:inherit; cursor:pointer}
+  input,textarea,select{font-family:inherit}
+
+  .app{display:grid; grid-template-columns:264px 1fr; height:100vh; height:100dvh}
+
+  /* Sidebar */
+  .sidebar{background:var(--panel-2); border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0}
+  .brand{padding:16px 16px 14px; border-bottom:1px solid var(--line)}
+  .brand .logo-wrap{line-height:0}
+  .brand .logo{width:150px; max-width:88%; height:auto; display:block; color:var(--accent)}
+  .brand p{margin:8px 0 0; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+  .plays{flex:1; overflow-y:auto; padding:10px 10px 4px}
+  .plays-head{display:flex; align-items:center; justify-content:space-between; padding:6px 8px 8px}
+  .plays-head span{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted-2)}
+  .play-item{display:block; width:100%; text-align:left; background:transparent; border:1px solid transparent; color:var(--ink); border-radius:10px; padding:10px 12px; margin-bottom:4px; transition:.12s}
+  .play-item:hover{background:var(--panel)}
+  .play-item.active{background:var(--panel); border-color:var(--line)}
+  .play-item .nm{font-weight:600; font-size:14px; display:flex; align-items:center; gap:8px}
+  .play-item .meta{font-size:11px; color:var(--muted); margin-top:2px}
+  .tag{font-size:9.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:2px 6px; border-radius:999px; white-space:nowrap}
+  .tag.off{background:rgba(61,123,237,.14); color:#2159c9}
+  .tag.def{background:rgba(239,68,68,.13); color:#c0362f}
+  .tag.ez{background:rgba(245,179,1,.20); color:#946a00}
+  .sidebar-foot{padding:12px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:8px}
+
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; border:1px solid var(--line); background:var(--panel); color:var(--ink); padding:9px 12px; border-radius:10px; font-size:13px; font-weight:500; transition:.12s}
+  .btn:hover{border-color:#c9d1d9}
+  .btn.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600}
+  .btn.primary:hover{filter:brightness(1.05)}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:6px 9px; font-size:12px; border-radius:8px}
+  .btn.danger:hover{border-color:var(--d); color:var(--d)}
+  .btn[disabled]{opacity:.4; pointer-events:none}
+  .btn svg{width:15px; height:15px; display:block}
+
+  /* Main */
+  .main{display:flex; flex-direction:column; min-width:0; min-height:0}
+  .topbar{display:flex; align-items:center; gap:12px; padding:12px 18px; border-bottom:1px solid var(--line); background:var(--panel-2)}
+  .menu-btn{display:none}
+  .tools-btn{display:none}
+  .title-wrap{flex:1; min-width:0}
+  .play-name-view{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase; line-height:1}
+  .play-name-input{background:transparent; border:none; border-bottom:1px dashed var(--line); color:var(--ink); font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase; padding:2px 0; width:100%; outline:none}
+  .play-name-input:focus{border-bottom-color:var(--accent)}
+  .play-desc{font-size:12.5px; color:var(--muted); margin-top:3px}
+
+  .segmented{display:inline-flex; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:3px}
+  .segmented button{border:none; background:transparent; color:var(--muted); padding:6px 12px; border-radius:7px; font-size:12.5px; font-weight:600; letter-spacing:.02em}
+  .segmented button.on{background:var(--accent); color:var(--accent-ink)}
+
+  .stage{flex:1; display:flex; min-height:0; position:relative}
+  .field-wrap{flex:1; display:flex; align-items:center; justify-content:center; padding:18px; min-height:0; min-width:0; background:radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.04), transparent 60%), var(--bg)}
+  svg.field{max-height:100%; max-width:100%; width:auto; height:auto; border-radius:var(--radius); box-shadow:var(--shadow); touch-action:none}
+
+  .player{cursor:default}
+  .editing .player{cursor:grab}
+  .editing .player.dragging{cursor:grabbing}
+  .player.sel .halo{opacity:1}
+
+  .inspector{width:234px; border-left:1px solid var(--line); background:var(--panel-2); padding:14px; overflow-y:auto; display:flex; flex-direction:column; gap:14px}
+  .insp-block label{display:block; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted-2); margin-bottom:6px}
+  .insp-block textarea, .insp-block select{width:100%; background:var(--panel); border:1px solid var(--line); color:var(--ink); border-radius:9px; padding:9px 10px; font-size:13px; outline:none; resize:vertical}
+  .insp-block textarea:focus, .insp-block select:focus{border-color:var(--accent)}
+  .row{display:flex; gap:8px; flex-wrap:wrap}
+  .row .btn{flex:1}
+  .hint{font-size:11.5px; color:var(--muted-2); line-height:1.5}
+  .insp-divider{height:1px; background:var(--line); margin:0 -14px}
+
+  /* Timeline */
+  .timeline{border-top:1px solid var(--line); background:var(--panel-2); padding:12px 18px 14px}
+  .steps{display:flex; align-items:center; gap:8px; flex:1; overflow-x:auto; padding-bottom:2px}
+  .step-chip{position:relative; flex:0 0 auto; width:42px; height:42px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--muted); font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:19px; display:flex; align-items:center; justify-content:center; transition:.12s}
+  .step-chip:hover{border-color:#c9d1d9; color:var(--ink)}
+  .step-chip.active{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  .step-add{flex:0 0 auto; width:42px; height:42px; border-radius:10px; border:1px dashed var(--line); background:transparent; color:var(--muted); font-size:20px; display:flex; align-items:center; justify-content:center}
+  .step-add:hover{border-color:var(--accent); color:var(--accent)}
+  .icon-btn{width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--panel); color:var(--ink); display:flex; align-items:center; justify-content:center}
+  .icon-btn.play{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+  .icon-btn svg{width:18px; height:18px}
+  .icon-btn[disabled]{opacity:.32; pointer-events:none}
+  .tl-row{display:flex; align-items:center; gap:12px}
+  .tl-counter{font-family:"Barlow Condensed",sans-serif; font-weight:700; line-height:1; display:flex; align-items:baseline; gap:3px; min-width:46px; justify-content:center}
+  .tl-counter .cur{font-size:26px; color:var(--ink)}
+  .tl-counter .tot{font-size:14px; color:var(--muted)}
+  .tl-note{flex:1; font-size:13px; color:var(--muted); min-height:18px; line-height:1.4}
+  .tl-note b{color:var(--ink); font-weight:600}
+  .steps{margin-top:10px}
+  .step-note-input{width:100%; margin-top:8px; background:var(--panel); border:1px solid var(--line); color:var(--ink); border-radius:9px; padding:8px 10px; font-size:13px; outline:none}
+  .step-note-input:focus{border-color:var(--accent)}
+  .tool.active{border-color:var(--accent); color:var(--accent)}
+  .swatches{display:flex; gap:8px}
+  .swatch{width:30px; height:30px; border-radius:8px; border:2px solid transparent; background:var(--sw); cursor:pointer; outline:1px solid rgba(0,0,0,.12)}
+  .swatch.active{border-color:#fff; box-shadow:0 0 0 2px var(--ink)}
+  .field.drawing-tool, .field.drawing-tool .player{cursor:crosshair}
+
+  .toggle{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); user-select:none; cursor:pointer}
+  .insp-block .toggle{display:inline-flex; text-transform:none; letter-spacing:normal; font-size:12.5px; margin-bottom:0}
+  .toggle input{display:none}
+  .toggle .track{width:34px; height:20px; border-radius:999px; background:var(--panel); border:1px solid var(--line); position:relative; transition:.12s; flex:0 0 auto}
+  .toggle .track::after{content:""; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--muted); transition:.12s}
+  .toggle input:checked + .track{background:var(--accent-soft); border-color:var(--accent)}
+  .toggle input:checked + .track::after{left:16px; background:var(--accent)}
+
+  .modal-bg{position:fixed; inset:0; background:rgba(20,28,38,.45); display:none; align-items:center; justify-content:center; z-index:40; padding:20px}
+  .modal-bg.on{display:flex}
+  .modal{width:min(560px,100%); background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); overflow:hidden}
+  .modal h3{margin:0; padding:16px 18px; border-bottom:1px solid var(--line); font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:18px; letter-spacing:.04em; text-transform:uppercase}
+  .modal .body{padding:16px 18px}
+  .modal textarea{width:100%; height:210px; background:var(--panel-2); border:1px solid var(--line); color:var(--ink); border-radius:10px; padding:12px; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; outline:none; resize:vertical}
+  .modal .foot{display:flex; gap:8px; justify-content:flex-end; padding:14px 18px; border-top:1px solid var(--line)}
+  .modal .hint{margin-bottom:10px}
+
+  .toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--ink); color:#fff; padding:10px 16px; border-radius:10px; font-size:13px; font-weight:600; opacity:0; transition:.25s; z-index:50; pointer-events:none}
+  .toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  .backdrop{position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; z-index:19}
+
+  @media (max-width:900px){
+    .app{grid-template-columns:1fr}
+    .sidebar{position:fixed; z-index:20; width:280px; height:100%; transform:translateX(-100%); transition:.2s; box-shadow:var(--shadow)}
+    .sidebar.open{transform:none}
+    .sidebar.open ~ .backdrop{display:block}
+    .menu-btn{display:inline-flex}
+    .tools-btn.show{display:inline-flex}
+    .inspector{position:fixed; right:0; top:0; height:100%; z-index:21; width:260px; transform:translateX(100%); transition:.2s; box-shadow:var(--shadow)}
+    .inspector.open{transform:none}
+    .topbar{padding:10px 12px; gap:8px}
+    .field-wrap{padding:10px}
+    .timeline{padding:10px 12px 12px}
+    .play-name-view,.play-name-input{font-size:19px}
+    .play-name-view{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .play-desc{display:none}
+  }
+  @media (max-width:600px){
+    .topbar .toggle .lbl{display:none}
+    .segmented button{padding:6px 9px; font-size:12px}
+    .tl-counter .cur{font-size:22px}
+    .tl-note{font-size:12.5px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="logo-wrap"><svg class="logo" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 471.86 69.93" xml:space="preserve"> <path fill="currentColor" d="M14.99,2.06h44.6c0.62,0,1.09,0.57,0.96,1.18l-3.08,14.53c-0.1,0.45-0.5,0.78-0.96,0.78H31.93 c-0.46,0-0.86,0.32-0.96,0.77l-1.88,8.82c-0.13,0.61,0.33,1.18,0.96,1.18h22.26c0.62,0,1.09,0.57,0.96,1.18l-3.08,14.53 c-0.1,0.45-0.5,0.78-0.96,0.78h-23c-0.46,0-0.86,0.32-0.96,0.77L20.9,67.04c-0.1,0.45-0.5,0.77-0.96,0.77H1.5 c-0.62,0-1.09-0.57-0.96-1.18l13.49-63.8C14.12,2.39,14.52,2.06,14.99,2.06z"/> <path fill="currentColor" d="M66.65,2.06h18.9c0.62,0,1.09,0.57,0.96,1.18l-9.63,45.43c-0.13,0.61,0.34,1.18,0.96,1.18h24.76 c0.65,0,1.12,0.62,0.94,1.24l-4.43,16c-0.12,0.42-0.5,0.72-0.94,0.72H53.16c-0.62,0-1.09-0.57-0.96-1.18l13.49-63.8 C65.79,2.39,66.19,2.06,66.65,2.06z"/> <path fill="currentColor" d="M128.33,67.82h-18.99c-0.62,0-1.09-0.58-0.96-1.19l4.94-22.88c0.04-0.16,0.03-0.34-0.02-0.5L100.88,3.33 c-0.2-0.63,0.27-1.27,0.93-1.27h19.15c0.46,0,0.86,0.33,0.96,0.78l4.32,20.8c0.18,0.86,1.31,1.07,1.79,0.33l13.61-21.45 c0.18-0.28,0.49-0.45,0.83-0.45h20.28c0.8,0,1.26,0.91,0.79,1.56l-29.3,39.9c-0.08,0.11-0.14,0.24-0.17,0.38l-4.77,23.14 C129.19,67.49,128.79,67.82,128.33,67.82z"/> <path fill="currentColor" d="M262.87,41.71l18-39.07c0.16-0.35,0.51-0.57,0.89-0.57H302c0.73,0,1.2,0.77,0.87,1.42l-32.61,63.8 c-0.17,0.33-0.5,0.53-0.87,0.53h-24.85c-0.51,0-0.93-0.38-0.97-0.89l-5.99-63.8c-0.05-0.57,0.4-1.07,0.97-1.07h20.08 c0.53,0,0.96,0.42,0.98,0.94L261,41.33C261.04,42.36,262.44,42.64,262.87,41.71z"/> <path fill="currentColor" d="M323.87,26.56h24.11c0.62,0,1.09,0.57,0.96,1.18l-2.99,14.16c-0.1,0.45-0.5,0.78-0.96,0.78h-24.94 c-0.46,0-0.86,0.32-0.96,0.77l-1.51,7.07c-0.13,0.61,0.33,1.18,0.96,1.18h27.43c0.65,0,1.12,0.61,0.94,1.24l-3.88,14.16 c-0.12,0.43-0.5,0.72-0.94,0.72h-47.5c-0.62,0-1.09-0.57-0.96-1.18l13.49-63.8c0.1-0.45,0.5-0.78,0.96-0.78h46.9 c0.62,0,1.09,0.57,0.96,1.18l-2.99,14.16c-0.1,0.45-0.5,0.78-0.96,0.78h-26.77c-0.46,0-0.86,0.33-0.96,0.78l-1.34,6.42 C322.79,25.99,323.25,26.56,323.87,26.56z"/> <path fill="currentColor" d="M367.09,67.82h-17.61c-0.62,0-1.09-0.57-0.96-1.18l13.49-63.8c0.1-0.45,0.5-0.78,0.96-0.78h26.19 c5.95,0,10.88,1.04,14.78,3.13c3.9,2.09,6.6,5.03,8.1,8.84c1.5,3.81,1.64,8.29,0.41,13.45c-0.8,3.56-2.43,6.75-4.88,9.58 c-2.28,2.62-5.1,4.73-8.49,6.35c-0.46,0.22-0.68,0.74-0.51,1.21l8.13,21.88c0.24,0.64-0.24,1.32-0.92,1.32h-18.59 c-0.43,0-0.81-0.28-0.94-0.69l-6.11-19.71c-0.13-0.41-0.51-0.69-0.94-0.69h-6.13c-0.46,0-0.86,0.32-0.96,0.78l-4.09,19.53 C367.95,67.49,367.55,67.82,367.09,67.82z M391.78,19.75c-1.26-1.47-3.33-2.21-6.22-2.21h-6.21c-0.46,0-0.86,0.32-0.96,0.77 l-2.61,12.04c-0.13,0.61,0.33,1.19,0.96,1.19h6.61c2.58,0,4.67-0.47,6.26-1.43c1.59-0.95,2.61-2.29,3.04-4.01 C393.33,23.34,393.04,21.22,391.78,19.75z"/> <path fill="currentColor" d="M410.34,45.99h18.74c0.5,0,0.9,0.39,0.96,0.88c0.29,2.19,1.07,3.82,2.35,4.88c1.44,1.2,3.6,1.8,6.49,1.8 c4.91,0,7.64-1.35,8.2-4.05c0.37-1.78,0.01-3.07-1.06-3.87c-1.07-0.8-2.59-1.44-4.56-1.93l-6.91-1.84 c-4.66-1.23-8.55-2.82-11.65-4.79c-3.1-1.96-5.25-4.5-6.45-7.6c-1.2-3.1-1.34-6.92-0.41-11.47c1.17-5.46,4.24-9.76,9.21-12.89 c4.97-3.13,11.27-4.7,18.88-4.7c8.23,0,14.7,1.75,19.43,5.25c4.49,3.32,7.04,8.03,7.65,14.12c0.05,0.54-0.35,1.03-0.89,1.08 l-18.53,1.93c-0.49,0.05-0.92-0.28-1.04-0.76c-0.99-3.79-3.69-5.69-8.1-5.69c-1.84,0-3.33,0.29-4.47,0.88 c-1.14,0.58-1.8,1.37-1.98,2.35c-0.37,1.72-0.08,2.96,0.88,3.73c0.95,0.77,2.53,1.43,4.74,1.98l7.83,1.93 c6.75,1.66,11.71,4.38,14.87,8.15c3.16,3.78,4.04,9.04,2.63,15.79c-1.17,5.59-4.36,10.04-9.58,13.35 c-5.22,3.31-11.79,4.97-19.71,4.97c-9.09,0-16.12-2.06-21.09-6.17c-4.74-3.92-7.22-9.35-7.44-16.29 C409.32,46.46,409.78,45.99,410.34,45.99z"/> <path fill="currentColor" d="M178.88,67.82h-21.86c-0.62,0-1.14-0.28-1.41-0.77c-5.08-9.16-6.75-20.11-4.06-31.9 c2.69-11.79,9.57-23.09,19.07-32.35c0.49-0.48,1.13-0.75,1.74-0.75l22.01,0c0.67,0,0.79,0.83,0.19,1.27 c-11.34,8.25-19.71,19.47-22.53,31.83c-2.82,12.35,0.33,23.21,7.63,31.4C180.05,67,179.54,67.82,178.88,67.82z"/> <path fill="currentColor" d="M192.13,67.82h21.86c0.62,0,1.27-0.28,1.76-0.77c9.25-9.16,15.92-20.11,18.6-31.9 c2.69-11.79,0.95-23.09-4.33-32.35c-0.27-0.48-0.79-0.75-1.4-0.75l-22.01,0c-0.67,0-1.17,0.83-0.77,1.27 c7.58,8.25,10.83,19.47,8.02,31.83c-2.82,12.35-10.9,23.21-21.94,31.4C191.34,67,191.47,67.82,192.13,67.82z"/> </svg></div><p>Playbook</p></div>
+    <div class="plays" id="playList"></div>
+    <div class="sidebar-foot">
+      <button class="btn ghost sm" id="newPlayBtn">＋ Nieuwe play</button>
+      <div class="row">
+        <button class="btn sm" id="exportBtn">Exporteer JSON</button>
+        <button class="btn sm" id="importBtn">Importeer</button>
+      </div>
+    </div>
+  </aside>
+  <div class="backdrop" id="backdrop"></div>
+
+  <main class="main">
+    <div class="topbar">
+      <button class="btn ghost sm menu-btn" id="menuBtn">☰</button>
+      <div class="title-wrap">
+        <div id="titleView" class="play-name-view">—</div>
+        <input id="titleInput" class="play-name-input" style="display:none" maxlength="42">
+        <div class="play-desc" id="playDesc"></div>
+      </div>
+      <label class="toggle" title="Toon/verberg bewegingslijnen">
+        <input type="checkbox" id="linesToggle" checked>
+        <span class="track"></span>
+        <span class="lbl">Bewegingslijnen</span>
+      </label>
+      <button class="btn ghost sm tools-btn" id="toolsBtn">Tools</button>
+      <div class="segmented" id="modeSeg">
+        <button data-mode="view" class="on">Bekijken</button>
+        <button data-mode="edit">Bewerken</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="field-wrap">
+        <svg class="field" id="svg" viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg" aria-label="Speelveld"></svg>
+      </div>
+
+      <aside class="inspector" id="inspector" style="display:none">
+        <div class="insp-block">
+          <button class="btn sm" id="undoBtn" style="width:100%" disabled>↶ Ongedaan maken</button>
+        </div>
+        <div class="insp-divider"></div>
+        <div class="insp-block">
+          <label class="toggle" style="color:var(--muted)">
+            <input type="checkbox" id="defToggle" checked>
+            <span class="track"></span>
+            <span>Verdediging tonen</span>
+          </label>
+        </div>
+        <div class="insp-block">
+          <label>Type play</label>
+          <select id="catSelect">
+            <option value="offense">Offense</option>
+            <option value="defense">Defense</option>
+            <option value="endzone">End-zone</option>
+          </select>
+        </div>
+        <div class="insp-block">
+          <label>Endzone-positie</label>
+          <select id="ezSelect">
+            <option value="bottom">Onderaan (start na de pull)</option>
+            <option value="top">Bovenaan</option>
+            <option value="top-large">Bovenaan – groot (endzone-play)</option>
+          </select>
+        </div>
+        <div class="insp-block">
+          <label>Beschrijving</label>
+          <textarea id="descInput" rows="2" placeholder="Waar draait deze play om?"></textarea>
+        </div>
+        <div class="insp-block">
+          <label>Spelers toevoegen</label>
+          <div class="row">
+            <button class="btn sm" id="addOff">＋ Aanvaller</button>
+            <button class="btn sm" id="addDef">＋ Verdediger</button>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn sm danger" id="delPlayer" disabled>Verwijder speler</button>
+          </div>
+          <p class="hint" style="margin-top:8px">Sleep spelers en de disc op het veld. Klik een speler om te selecteren.</p>
+        </div>
+        <div class="insp-block">
+          <label>Looplijnen tekenen</label>
+          <div class="row">
+            <button class="btn sm tool active" data-tool="move">✋ Verplaatsen</button>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn sm tool" data-tool="arrow">↗ Pijl</button>
+            <button class="btn sm tool" data-tool="dashed">╌ Stippel</button>
+          </div>
+          <div class="swatches" style="margin-top:10px">
+            <button class="swatch active" data-color="blue" style="--sw:#3d7bed" title="Blauw"></button>
+            <button class="swatch" data-color="red" style="--sw:#ef4444" title="Rood"></button>
+            <button class="swatch" data-color="yellow" style="--sw:#f5b301" title="Frisbee-geel"></button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn sm" id="clearLines">Wis lijnen (deze stap)</button>
+          </div>
+          <p class="hint" style="margin-top:8px">Kies Pijl of Stippel + een kleur en sleep op het veld. Handig voor looplijnen wanneer spelers blijven staan.</p>
+        </div>
+        <div class="insp-block">
+          <label>Deze play</label>
+          <div class="row"><button class="btn sm danger" id="delPlay">Play verwijderen</button></div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="timeline">
+      <div class="tl-row">
+        <button class="icon-btn" id="prevBtn" title="Vorige actie"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5v14L5 12z"/></svg></button>
+        <div class="tl-counter"><span class="cur" id="curNum">1</span><span class="tot">/&nbsp;<span id="totNum">1</span></span></div>
+        <button class="icon-btn play" id="nextBtn" title="Volgende actie"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <div class="tl-note" id="tlNote"></div>
+      </div>
+      <div class="steps" id="steps"></div>
+      <input id="stepNote" class="step-note-input" style="display:none" placeholder="Notitie bij deze stap (bv. 'break-cut naar de open kant')">
+    </div>
+  </main>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle">Exporteer playbook</h3>
+    <div class="body">
+      <p class="hint" id="modalHint"></p>
+      <textarea id="modalText" spellcheck="false"></textarea>
+    </div>
+    <div class="foot">
+      <button class="btn ghost" id="modalClose">Sluiten</button>
+      <button class="btn" id="modalCopy" style="display:none">Kopieer</button>
+      <button class="btn" id="modalDownload" style="display:none">Download .json</button>
+      <button class="btn primary" id="modalLoad" style="display:none">Laad playbook</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* Datamodel: play = {id,name,category:'offense'|'defense'|'endzone',description,steps[]}
+   step = {note, disc:{x,y}, offense:[{id,label,x,y}], defense:[...]}  — coords genormaliseerd 0..1
+   Elke play staat standaard 7 aanvallers (blauw) tegen 7 verdedigers (rood). */
+
+const uid = () => Math.random().toString(36).slice(2,9);
+const P = (id,label,x,y) => ({id,label,x,y});
+
+function seedPlaybook(){
+  return [
+    { id:uid(), name:"Verticale stack – ISO", category:"offense", endzone:"top",
+      description:"Iso-cut vanuit de vertical stack naar de open kant, diep in de endzone.",
+      steps:[
+        { note:"Opstelling: 2 handlers, stack in het midden.", disc:{x:.40,y:.80},
+          offense:[P("o1","1",.40,.80),P("o2","2",.60,.82),P("o3","3",.50,.42),P("o4","4",.50,.50),P("o5","5",.50,.58),P("o6","6",.50,.66),P("o7","7",.50,.34)],
+          defense:[P("d1","1",.44,.85),P("d2","2",.56,.87),P("d3","3",.54,.42),P("d4","4",.54,.50),P("d5","5",.54,.58),P("d6","6",.54,.66),P("d7","7",.50,.28)] },
+        { note:"Achterste cutter breekt naar de open (linker) kant.", disc:{x:.40,y:.80},
+          offense:[P("o1","1",.40,.80),P("o2","2",.60,.82),P("o3","3",.50,.42),P("o4","4",.50,.50),P("o5","5",.50,.58),P("o6","6",.50,.66),P("o7","7",.26,.30)],
+          defense:[P("d1","1",.44,.85),P("d2","2",.56,.87),P("d3","3",.54,.42),P("d4","4",.54,.50),P("d5","5",.54,.58),P("d6","6",.54,.66),P("d7","7",.38,.36)] },
+        { note:"Huck naar de cutter die doorloopt tot in de endzone. Punt.", disc:{x:.22,y:.16},
+          offense:[P("o1","1",.40,.80),P("o2","2",.60,.82),P("o3","3",.50,.42),P("o4","4",.50,.50),P("o5","5",.50,.58),P("o6","6",.50,.66),P("o7","7",.22,.16)],
+          defense:[P("d1","1",.44,.85),P("d2","2",.56,.87),P("d3","3",.54,.42),P("d4","4",.54,.50),P("d5","5",.54,.58),P("d6","6",.54,.66),P("d7","7",.30,.24)] }
+      ]
+    },
+    { id:uid(), name:"Horizontale stack – Give & Go", category:"offense", endzone:"bottom",
+      description:"Snelle give-and-go: pass naar de cutter, dan de lijn op en de disc terug.",
+      steps:[
+        { note:"Ho-stack: 3 handlers, 4 cutters op één lijn.", disc:{x:.30,y:.78},
+          offense:[P("o1","1",.30,.78),P("o2","2",.50,.80),P("o3","3",.70,.78),P("o4","4",.20,.46),P("o5","5",.40,.46),P("o6","6",.60,.46),P("o7","7",.80,.46)],
+          defense:[P("d1","1",.30,.84),P("d2","2",.50,.86),P("d3","3",.70,.84),P("d4","4",.20,.40),P("d5","5",.40,.40),P("d6","6",.60,.40),P("d7","7",.80,.40)] },
+        { note:"Give: pass naar cutter 5, handler 1 snijdt de lijn op.", disc:{x:.40,y:.46},
+          offense:[P("o1","1",.34,.60),P("o2","2",.50,.80),P("o3","3",.70,.78),P("o4","4",.20,.46),P("o5","5",.40,.46),P("o6","6",.60,.46),P("o7","7",.80,.46)],
+          defense:[P("d1","1",.40,.66),P("d2","2",.50,.86),P("d3","3",.70,.84),P("d4","4",.20,.40),P("d5","5",.44,.42),P("d6","6",.60,.40),P("d7","7",.80,.40)] },
+        { note:"Go: disc terug naar handler 1 die vrij doorloopt.", disc:{x:.32,y:.38},
+          offense:[P("o1","1",.32,.38),P("o2","2",.50,.80),P("o3","3",.70,.78),P("o4","4",.20,.46),P("o5","5",.40,.46),P("o6","6",.60,.46),P("o7","7",.80,.46)],
+          defense:[P("d1","1",.40,.48),P("d2","2",.50,.86),P("d3","3",.70,.84),P("d4","4",.20,.40),P("d5","5",.44,.42),P("d6","6",.60,.40),P("d7","7",.80,.40)] }
+      ]
+    },
+    { id:uid(), name:"Zone – Cup", category:"defense", endzone:"bottom",
+      description:"3-mans cup rond de disc, twee wings en één deep. Verschuift mee met de swing.",
+      steps:[
+        { note:"Cup staat rond de disc in het midden.", disc:{x:.50,y:.72},
+          offense:[P("o1","1",.50,.74),P("o2","2",.28,.72),P("o3","3",.72,.72),P("o4","4",.40,.55),P("o5","5",.60,.55),P("o6","6",.50,.42),P("o7","7",.50,.24)],
+          defense:[P("d1","1",.42,.66),P("d2","2",.50,.62),P("d3","3",.58,.66),P("d4","4",.28,.52),P("d5","5",.72,.52),P("d6","6",.50,.44),P("d7","7",.50,.26)] },
+        { note:"Disc swingt naar rechts – de cup schuift mee.", disc:{x:.72,y:.68},
+          offense:[P("o1","1",.50,.74),P("o2","2",.28,.72),P("o3","3",.72,.70),P("o4","4",.40,.55),P("o5","5",.60,.55),P("o6","6",.50,.42),P("o7","7",.50,.24)],
+          defense:[P("d1","1",.62,.62),P("d2","2",.70,.58),P("d3","3",.78,.62),P("d4","4",.42,.52),P("d5","5",.82,.50),P("d6","6",.60,.44),P("d7","7",.58,.26)] }
+      ]
+    },
+    { id:uid(), name:"End-zone – Corner ISO", category:"endzone", endzone:"top-large",
+      description:"Endzone-set: iso-cutter naar de break-hoek, snelle score in de dode hoek.",
+      steps:[
+        { note:"Opstelling net buiten de endzone, disc centraal.", disc:{x:.50,y:.30},
+          offense:[P("o1","1",.50,.30),P("o2","2",.30,.30),P("o3","3",.70,.30),P("o4","4",.42,.22),P("o5","5",.58,.22),P("o6","6",.50,.14),P("o7","7",.50,.42)],
+          defense:[P("d1","1",.50,.34),P("d2","2",.30,.34),P("d3","3",.70,.34),P("d4","4",.42,.17),P("d5","5",.58,.17),P("d6","6",.50,.10),P("d7","7",.50,.46)] },
+        { note:"Iso-cutter 4 snijdt naar de linker endzone-hoek.", disc:{x:.50,y:.30},
+          offense:[P("o1","1",.50,.30),P("o2","2",.30,.30),P("o3","3",.70,.30),P("o4","4",.18,.10),P("o5","5",.58,.22),P("o6","6",.50,.14),P("o7","7",.50,.42)],
+          defense:[P("d1","1",.50,.34),P("d2","2",.30,.34),P("d3","3",.70,.34),P("d4","4",.28,.14),P("d5","5",.58,.17),P("d6","6",.50,.10),P("d7","7",.50,.46)] },
+        { note:"Pass in de hoek – gescoord.", disc:{x:.16,y:.08},
+          offense:[P("o1","1",.50,.30),P("o2","2",.30,.30),P("o3","3",.70,.30),P("o4","4",.16,.08),P("o5","5",.58,.22),P("o6","6",.50,.14),P("o7","7",.50,.42)],
+          defense:[P("d1","1",.50,.34),P("d2","2",.30,.34),P("d3","3",.70,.34),P("d4","4",.26,.13),P("d5","5",.58,.17),P("d6","6",.50,.10),P("d7","7",.50,.46)] }
+      ]
+    }
+  ];
+}
+
+/* State */
+let plays = seedPlaybook();
+let curPlay = 0, curStep = 0;
+let mode = "view";
+function defShown(){ return curPlayObj().showDef!==false; }
+let showLines = true;
+let selected = null;
+let playing = false, animRAF = null;
+let history = [];
+
+/* Geometry */
+const VB=600, VH=800, MX=46, MTop=40, MBot=48;
+const FW=VB-MX*2, FH=VH-MTop-MBot, EZ=0.20;
+const nx=x=>MX+x*FW, ny=y=>MTop+y*FH;
+const inv=(px,py)=>({x:(px-MX)/FW, y:(py-MTop)/FH});
+
+const svg=document.getElementById('svg');
+const SVGNS="http://www.w3.org/2000/svg";
+function el(tag,attrs){ const e=document.createElementNS(SVGNS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+function curPlayObj(){ return plays[curPlay]; }
+
+/* Field */
+function drawField(){
+  const defs=el('defs');
+  const grad=el('linearGradient',{id:'turf',x1:0,y1:0,x2:0,y2:1});
+  grad.appendChild(el('stop',{offset:0,'stop-color':'#438352'}));
+  grad.appendChild(el('stop',{offset:1,'stop-color':'#376e42'}));
+  defs.appendChild(grad);
+  for(const [id,color] of [['ahO','#6ea0ff'],['ahD','#ff8b84'],['ahDisc','#f5b301'],['adRed','#ef4444'],['adBlue','#3d7bed'],['adYel','#f5b301']]){
+    const m=el('marker',{id,viewBox:'0 0 10 10',refX:8,refY:5,markerWidth:6.5,markerHeight:6.5,orient:'auto-start-reverse'});
+    m.appendChild(el('path',{d:'M0,0 L10,5 L0,10 z',fill:color}));
+    defs.appendChild(m);
+  }
+  svg.appendChild(defs);
+
+  const g=el('g',{id:'field'});
+  g.appendChild(el('rect',{x:0,y:0,width:VB,height:VH,fill:'#2c5838'}));
+  g.appendChild(el('rect',{x:MX,y:MTop,width:FW,height:FH,fill:'url(#turf)',rx:6}));
+  for(let i=0;i<8;i++) if(i%2) g.appendChild(el('rect',{x:MX,y:MTop+i*FH/8,width:FW,height:FH/8,fill:'#3a7546',opacity:.5}));
+  const ls={stroke:'var(--chalk)','stroke-width':2.4,fill:'none',opacity:.85};
+  g.appendChild(el('rect',Object.assign({x:MX,y:MTop,width:FW,height:FH,rx:6},ls)));
+  svg.appendChild(g);
+  svg.appendChild(el('g',{id:'ezone'}));
+  svg.appendChild(el('g',{id:'annot'}));
+  svg.appendChild(el('g',{id:'arrows'}));
+  svg.appendChild(el('g',{id:'layer'}));
+}
+
+/* Endzone per play: 'bottom' (eigen endzone, start na de pull) | 'top' | 'top-large' (2/5) */
+function drawEndzone(){
+  const g=document.getElementById('ezone'); g.innerHTML='';
+  const mode=curPlayObj().endzone||'bottom';
+  const top = (mode==='top' || mode==='top-large');
+  const depth = (mode==='top-large') ? 0.40 : 0.20;
+  const y0 = top ? 0 : (1-depth);
+  const y1 = top ? depth : 1;
+  const ry0=ny(y0), ry1=ny(y1);
+  g.appendChild(el('rect',{x:MX,y:Math.min(ry0,ry1),width:FW,height:Math.abs(ry1-ry0),fill:'rgba(255,255,255,.07)'}));
+  const lineY = top ? ny(depth) : ny(1-depth);
+  g.appendChild(el('line',{x1:MX,y1:lineY,x2:MX+FW,y2:lineY,stroke:'var(--chalk)','stroke-width':2.4,opacity:.85}));
+  const labY = top ? ny(0)+20 : ny(1)-10;
+  const lab=el('text',{x:MX+8,y:labY,fill:'var(--chalk)','font-family':'Barlow Condensed, sans-serif','font-size':15,'letter-spacing':2,opacity:.55});
+  lab.textContent='ENDZONE'; g.appendChild(lab);
+}
+
+function frameAt(i){ const s=curPlayObj().steps[i]; return {disc:{...s.disc}, offense:s.offense.map(p=>({...p})), defense:s.defense.map(p=>({...p}))}; }
+
+function lerpFrame(a,b,t){
+  const e=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+  const mix=(pa,pb)=> pa&&pb?{...pb,x:pa.x+(pb.x-pa.x)*e,y:pa.y+(pb.y-pa.y)*e}:(pb||pa);
+  const byId=arr=>Object.fromEntries(arr.map(p=>[p.id,p]));
+  const merge=(A,B)=>{ const ids=new Set([...Object.keys(A),...Object.keys(B)]); return [...ids].map(id=>mix(A[id],B[id])); };
+  return { disc:mix({...a.disc,id:'disc'},{...b.disc,id:'disc'}),
+           offense:merge(byId(a.offense),byId(b.offense)),
+           defense:merge(byId(a.defense),byId(b.defense)) };
+}
+
+function renderArrows(){
+  const g=document.getElementById('arrows'); g.innerHTML='';
+  if(!showLines || playing || curStep===0) return;
+  const prev=frameAt(curStep-1), cur=frameAt(curStep);
+  const byId=arr=>Object.fromEntries(arr.map(p=>[p.id,p]));
+  const cut=(a,b,color,marker)=>{ if(Math.hypot(b.x-a.x,b.y-a.y)<0.02) return;
+    g.appendChild(el('line',{x1:nx(a.x),y1:ny(a.y),x2:nx(b.x),y2:ny(b.y),stroke:color,'stroke-width':2.4,'stroke-dasharray':'1 6','stroke-linecap':'round','marker-end':marker})); };
+  const po=byId(prev.offense),co=byId(cur.offense);
+  for(const id in co) if(po[id]) cut(po[id],co[id],'rgba(110,160,255,.95)','url(#ahO)');
+  if(defShown()){ const pd=byId(prev.defense),cd=byId(cur.defense); for(const id in cd) if(pd[id]) cut(pd[id],cd[id],'rgba(255,120,110,.92)','url(#ahD)'); }
+  if(prev.disc&&cur.disc&&Math.hypot(cur.disc.x-prev.disc.x,cur.disc.y-prev.disc.y)>0.02)
+    g.appendChild(el('line',{x1:nx(prev.disc.x),y1:ny(prev.disc.y),x2:nx(cur.disc.x),y2:ny(cur.disc.y),stroke:'var(--frisbee)','stroke-width':2.4,'stroke-dasharray':'1 6','stroke-linecap':'round','marker-end':'url(#ahDisc)'}));
+}
+
+/* Handgetekende looplijnen (annotaties per stap) */
+const LINE_COLORS={red:'#ef4444',blue:'#3d7bed',yellow:'#f5b301'};
+const LINE_MARKERS={red:'url(#adRed)',blue:'url(#adBlue)',yellow:'url(#adYel)'};
+function renderLines(preview){
+  const g=document.getElementById('annot'); g.innerHTML='';
+  if(playing) return;
+  const st=curPlayObj().steps[curStep];
+  const draw=(ln,isPreview)=>{
+    const a={x1:nx(ln.x1),y1:ny(ln.y1),x2:nx(ln.x2),y2:ny(ln.y2),stroke:LINE_COLORS[ln.color]||'#f5b301','stroke-width':3,'stroke-linecap':'round'};
+    if(isPreview) a.opacity=.6;
+    if(ln.type==='dashed') a['stroke-dasharray']='2 8';
+    else a['marker-end']=LINE_MARKERS[ln.color]||'url(#adYel)';
+    g.appendChild(el('line',a));
+  };
+  (st.lines||[]).forEach(ln=>draw(ln,false));
+  if(preview) draw(preview,true);
+}
+function updateToolUI(){
+  document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));
+  document.querySelectorAll('.swatch').forEach(b=>b.classList.toggle('active',b.dataset.color===drawColor));
+  svg.classList.toggle('drawing-tool', mode==='edit' && tool!=='move');
+}
+
+function renderFrame(fr){
+  const layer=document.getElementById('layer'); layer.innerHTML='';
+  const drawPlayer=(p,side)=>{
+    const g=el('g',{class:'player'+(selected&&selected.side===side&&selected.id===p.id?' sel':''),'data-side':side,'data-id':p.id,transform:`translate(${nx(p.x)},${ny(p.y)})`});
+    g.appendChild(el('circle',{class:'halo',r:19,fill:'none',stroke:'var(--accent)','stroke-width':2.5,opacity:0}));
+    const fill = side==='offense'?'var(--o)':'var(--d)';
+    const ink  = side==='offense'?'var(--o-ink)':'var(--d-ink)';
+    const stroke = side==='offense'?'#1c3a80':'#8f1f1f';
+    g.appendChild(el('circle',{r:13.5,fill,stroke,'stroke-width':1.5}));
+    const t=el('text',{y:4.5,'text-anchor':'middle',fill:ink,'font-family':'Barlow Condensed,sans-serif','font-weight':700,'font-size':16});
+    t.textContent=p.label||''; g.appendChild(t);
+    layer.appendChild(g);
+  };
+  fr.offense.forEach(p=>drawPlayer(p,'offense'));
+  if(defShown()) fr.defense.forEach(p=>drawPlayer(p,'defense'));
+  if(fr.disc){
+    const d=el('g',{class:'player','data-side':'disc','data-id':'disc',transform:`translate(${nx(fr.disc.x)},${ny(fr.disc.y)})`});
+    d.appendChild(el('circle',{class:'halo',r:19,fill:'none',stroke:'var(--accent)','stroke-width':2.5,opacity:0}));
+    d.appendChild(el('circle',{r:13.5,fill:'var(--disc)',stroke:'#b9c2cc','stroke-width':1.5}));
+    d.appendChild(el('circle',{r:8.5,fill:'none',stroke:'#c7ced6','stroke-width':1.4}));
+    d.appendChild(el('circle',{r:3.4,fill:'none',stroke:'#c7ced6','stroke-width':1.2}));
+    layer.appendChild(d);
+  }
+}
+
+function render(){
+  const list=document.getElementById('playList');
+  list.innerHTML='<div class="plays-head"><span>Plays</span><span>'+plays.length+'</span></div>';
+  const tagClass={offense:'off',defense:'def',endzone:'ez'};
+  const tagText={offense:'OFF',defense:'DEF',endzone:'EZ'};
+  plays.forEach((p,i)=>{
+    const b=document.createElement('button');
+    b.className='play-item'+(i===curPlay?' active':'');
+    b.innerHTML=`<div class="nm"><span class="tag ${tagClass[p.category]}">${tagText[p.category]}</span>${escapeHtml(p.name)}</div><div class="meta">${p.steps.length} stap${p.steps.length>1?'pen':''}</div>`;
+    b.onclick=()=>{ curPlay=i; curStep=0; selected=null; stopPlay(); render(); closeMobilePanels(); };
+    list.appendChild(b);
+  });
+
+  const play=curPlayObj();
+  document.getElementById('titleView').textContent=play.name;
+  document.getElementById('titleView').style.display=mode==='edit'?'none':'block';
+  const ti=document.getElementById('titleInput'); ti.style.display=mode==='edit'?'block':'none'; ti.value=play.name;
+  document.getElementById('playDesc').textContent=play.description||'';
+
+  document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
+  document.getElementById('inspector').style.display=mode==='edit'?'flex':'none';
+  document.getElementById('stepNote').style.display=mode==='edit'?'block':'none';
+  document.getElementById('tlNote').style.display=mode==='edit'?'none':'block';
+  document.getElementById('toolsBtn').classList.toggle('show',mode==='edit');
+  svg.classList.toggle('editing',mode==='edit');
+  document.getElementById('catSelect').value=play.category;
+  document.getElementById('ezSelect').value=play.endzone||'bottom';
+  drawEndzone();
+  document.getElementById('descInput').value=play.description||'';
+  document.getElementById('delPlayer').disabled=!selected;
+  document.getElementById('undoBtn').disabled=history.length===0;
+  updateNavButtons();
+  document.getElementById('defToggle').checked=defShown();
+  document.getElementById('linesToggle').checked=showLines;
+
+  const steps=document.getElementById('steps'); steps.innerHTML='';
+  play.steps.forEach((s,i)=>{
+    const c=document.createElement('button');
+    c.className='step-chip'+(i===curStep?' active':''); c.textContent=i+1;
+    c.onclick=()=>{ curStep=i; selected=null; stopPlay(); render(); };
+    steps.appendChild(c);
+  });
+  if(mode==='edit'){ const add=document.createElement('button'); add.className='step-add'; add.textContent='＋'; add.title='Stap toevoegen (kopie van huidige)'; add.onclick=addStep; steps.appendChild(add); }
+
+  const s=play.steps[curStep];
+  document.getElementById('curNum').textContent=curStep+1;
+  document.getElementById('totNum').textContent=play.steps.length;
+  document.getElementById('tlNote').textContent=s.note||'';
+  document.getElementById('stepNote').value=s.note||'';
+  document.getElementById('steps').style.display=mode==='edit'?'flex':'none';
+  updateToolUI();
+
+  renderFrame(frameAt(curStep));
+  renderArrows();
+  renderLines();
+}
+function escapeHtml(str){return (str||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* History / undo */
+function snapshot(){ history.push(JSON.stringify({plays,curPlay,curStep})); if(history.length>60) history.shift(); document.getElementById('undoBtn').disabled=false; }
+function undo(){ if(!history.length) return; const s=JSON.parse(history.pop()); plays=s.plays; curPlay=Math.min(s.curPlay,plays.length-1); curStep=Math.min(s.curStep,plays[curPlay].steps.length-1); selected=null; stopPlay(); render(); }
+
+/* Animatie: één actie vooruit of achteruit (2x trager) */
+const PER_SEG=1800;
+function animateTo(target){
+  const play=curPlayObj();
+  if(playing || target<0 || target>play.steps.length-1) return;
+  const from=frameAt(curStep), to=frameAt(target);
+  playing=true; document.getElementById('arrows').innerHTML=''; document.getElementById('annot').innerHTML=''; let start=null;
+  function tick(ts){
+    if(!playing) return;
+    if(start===null) start=ts;
+    const t=Math.min((ts-start)/PER_SEG,1);
+    renderFrame(lerpFrame(from,to,t));
+    if(t>=1){ playing=false; curStep=target; render(); return; }
+    animRAF=requestAnimationFrame(tick);
+  }
+  animRAF=requestAnimationFrame(tick);
+}
+function nextStep(){ animateTo(curStep+1); }
+function prevStep(){ if(playing||curStep===0) return; curStep--; render(); }
+function stopPlay(){ playing=false; if(animRAF) cancelAnimationFrame(animRAF); animRAF=null; }
+function updateNavButtons(){
+  document.getElementById('prevBtn').disabled = curStep===0;
+  document.getElementById('nextBtn').disabled = curStep>=curPlayObj().steps.length-1;
+}
+
+/* Drag & tekenen */
+let drag=null, pendingSnap=false;
+let tool='move', drawColor='blue', drawing=null;
+function clientToNorm(e){ const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; const l=pt.matrixTransform(svg.getScreenCTM().inverse()); let {x,y}=inv(l.x,l.y); return {x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y))}; }
+svg.addEventListener('pointerdown',e=>{
+  if(mode!=='edit') return;
+  if(tool==='move'){
+    const g=e.target.closest('.player'); if(!g) return;
+    const side=g.dataset.side,id=g.dataset.id;
+    if(side!=='disc') selected={side,id}; else selected=null;
+    drag={side,id,g}; pendingSnap=true; g.classList.add('dragging'); svg.setPointerCapture(e.pointerId); render();
+  } else {
+    const {x,y}=clientToNorm(e);
+    drawing={type:tool,color:drawColor,x1:x,y1:y,x2:x,y2:y};
+    svg.setPointerCapture(e.pointerId);
+  }
+});
+svg.addEventListener('pointermove',e=>{
+  if(drag){
+    if(pendingSnap){ snapshot(); pendingSnap=false; }
+    const {x,y}=clientToNorm(e); const s=curPlayObj().steps[curStep];
+    if(drag.side==='disc'){ s.disc.x=x; s.disc.y=y; }
+    else { const arr=drag.side==='offense'?s.offense:s.defense; const p=arr.find(p=>p.id===drag.id); if(p){p.x=x;p.y=y;} }
+    renderFrame(frameAt(curStep));
+  } else if(drawing){
+    const {x,y}=clientToNorm(e); drawing.x2=x; drawing.y2=y; renderLines(drawing);
+  }
+});
+function endInteraction(){
+  if(drag){ drag.g.classList.remove('dragging'); drag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; renderArrows(); }
+  if(drawing){
+    if(Math.hypot(drawing.x2-drawing.x1,drawing.y2-drawing.y1)>0.03){
+      snapshot(); const st=curPlayObj().steps[curStep]; if(!st.lines) st.lines=[]; st.lines.push({...drawing});
+    }
+    drawing=null; render();
+  }
+}
+svg.addEventListener('pointerup',endInteraction);
+svg.addEventListener('pointercancel',endInteraction);
+
+/* Structural edits */
+function addStep(){ snapshot(); const play=curPlayObj(); play.steps.splice(curStep+1,0,JSON.parse(JSON.stringify({...play.steps[curStep],note:''}))); curStep++; stopPlay(); render(); }
+function deleteStep(){ const play=curPlayObj(); if(play.steps.length<=1){toast('Een play heeft minstens één stap.');return;} snapshot(); play.steps.splice(curStep,1); curStep=Math.max(0,curStep-1); render(); }
+function addPlayer(side){ snapshot(); curPlayObj().steps.forEach(s=>{ const arr=side==='offense'?s.offense:s.defense; const id=(side==='offense'?'o':'d')+uid(); arr.push(P(id,String(arr.length+1),.5,.55)); }); toast(side==='offense'?'Aanvaller toegevoegd':'Verdediger toegevoegd'); render(); }
+function deletePlayer(){ if(!selected) return; snapshot(); curPlayObj().steps.forEach(s=>{ const k=selected.side==='offense'?'offense':'defense'; s[k]=s[k].filter(p=>p.id!==selected.id); }); selected=null; render(); }
+function newPlay(){ snapshot(); const p={id:uid(),name:"Nieuwe play",category:"offense",endzone:"bottom",description:"",
+  steps:[{note:"",disc:{x:.40,y:.80},
+    offense:[P("o1","1",.40,.80),P("o2","2",.60,.82),P("o3","3",.50,.42),P("o4","4",.50,.50),P("o5","5",.50,.58),P("o6","6",.50,.66),P("o7","7",.50,.34)],
+    defense:[P("d1","1",.44,.85),P("d2","2",.56,.87),P("d3","3",.54,.42),P("d4","4",.54,.50),P("d5","5",.54,.58),P("d6","6",.54,.66),P("d7","7",.50,.28)]}]};
+  plays.push(p); curPlay=plays.length-1; curStep=0; mode='edit'; selected=null; stopPlay(); render(); document.getElementById('titleInput').focus(); }
+function deletePlay(){ if(plays.length<=1){toast('Je playbook heeft minstens één play nodig.');return;} snapshot(); plays.splice(curPlay,1); curPlay=Math.max(0,curPlay-1); curStep=0; render(); }
+
+/* Wiring */
+document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>{ mode=b.dataset.mode; selected=null; tool='move'; drawing=null; stopPlay(); render(); });
+document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>{ tool=b.dataset.tool; updateToolUI(); });
+document.querySelectorAll('.swatch').forEach(b=>b.onclick=()=>{ drawColor=b.dataset.color; updateToolUI(); });
+document.getElementById('clearLines').onclick=()=>{ const st=curPlayObj().steps[curStep]; if(!st.lines||!st.lines.length){ toast('Geen lijnen op deze stap.'); return; } snapshot(); st.lines=[]; render(); toast('Lijnen gewist'); };
+document.getElementById('nextBtn').onclick=nextStep;
+document.getElementById('prevBtn').onclick=prevStep;
+document.getElementById('linesToggle').onchange=e=>{ showLines=e.target.checked; renderArrows(); };
+document.getElementById('defToggle').onchange=e=>{ curPlayObj().showDef=e.target.checked; render(); };
+document.getElementById('undoBtn').onclick=undo;
+document.getElementById('titleInput').onfocus=()=>snapshot();
+document.getElementById('titleInput').oninput=e=>{ curPlayObj().name=e.target.value; document.getElementById('titleView').textContent=e.target.value; };
+document.getElementById('descInput').onfocus=()=>snapshot();
+document.getElementById('descInput').oninput=e=>{ curPlayObj().description=e.target.value; document.getElementById('playDesc').textContent=e.target.value; };
+document.getElementById('catSelect').onchange=e=>{ snapshot(); curPlayObj().category=e.target.value; render(); };
+document.getElementById('ezSelect').onchange=e=>{ snapshot(); curPlayObj().endzone=e.target.value; render(); };
+document.getElementById('stepNote').onfocus=()=>snapshot();
+document.getElementById('stepNote').oninput=e=>{ curPlayObj().steps[curStep].note=e.target.value; };
+document.getElementById('addOff').onclick=()=>addPlayer('offense');
+document.getElementById('addDef').onclick=()=>addPlayer('defense');
+document.getElementById('delPlayer').onclick=deletePlayer;
+document.getElementById('delPlay').onclick=deletePlay;
+document.getElementById('newPlayBtn').onclick=newPlay;
+
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ if(mode==='edit'){ e.preventDefault(); undo(); } return; }
+  if(/input|textarea|select/.test((e.target.tagName||'').toLowerCase())) return;
+  const play=curPlayObj();
+  if(e.key==='ArrowRight'){ curStep=Math.min(play.steps.length-1,curStep+1); stopPlay(); render(); }
+  else if(e.key==='ArrowLeft'){ curStep=Math.max(0,curStep-1); stopPlay(); render(); }
+  else if(e.key===' '){ e.preventDefault(); nextStep(); }
+  else if((e.key==='Delete'||e.key==='Backspace')&&mode==='edit'){ deleteStep(); }
+});
+
+/* Import / export */
+const modal=document.getElementById('modal');
+function openExport(){ document.getElementById('modalTitle').textContent='Exporteer playbook'; document.getElementById('modalHint').textContent='Dit is je volledige playbook als JSON. Precies dit bestand bundel je in de echte site om te publiceren.'; const t=document.getElementById('modalText'); t.value=JSON.stringify(plays,null,2); t.readOnly=true; toggleModalBtns({copy:true,download:true,load:false}); modal.classList.add('on'); }
+function openImport(){ document.getElementById('modalTitle').textContent='Importeer playbook'; document.getElementById('modalHint').textContent='Plak hier een eerder geëxporteerd playbook (JSON) en laad het in.'; const t=document.getElementById('modalText'); t.value=''; t.readOnly=false; toggleModalBtns({copy:false,download:false,load:true}); modal.classList.add('on'); }
+function toggleModalBtns({copy,download,load}){ document.getElementById('modalCopy').style.display=copy?'inline-flex':'none'; document.getElementById('modalDownload').style.display=download?'inline-flex':'none'; document.getElementById('modalLoad').style.display=load?'inline-flex':'none'; }
+document.getElementById('exportBtn').onclick=openExport;
+document.getElementById('importBtn').onclick=openImport;
+document.getElementById('modalClose').onclick=()=>modal.classList.remove('on');
+modal.addEventListener('click',e=>{ if(e.target===modal) modal.classList.remove('on'); });
+document.getElementById('modalCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(document.getElementById('modalText').value); toast('Gekopieerd naar klembord'); }catch{ toast('Kopiëren niet toegelaten hier'); } };
+document.getElementById('modalDownload').onclick=()=>{ const b=new Blob([document.getElementById('modalText').value],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='flyovers-playbook.json'; a.click(); URL.revokeObjectURL(a.href); };
+document.getElementById('modalLoad').onclick=()=>{ try{ const d=JSON.parse(document.getElementById('modalText').value); if(!Array.isArray(d)||!d.length) throw new Error(); snapshot(); plays=d; curPlay=0; curStep=0; selected=null; stopPlay(); render(); modal.classList.remove('on'); toast('Playbook geladen'); }catch{ toast('Ongeldige JSON'); } };
+
+/* Mobile panels */
+document.getElementById('menuBtn').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
+document.getElementById('toolsBtn').onclick=()=>document.getElementById('inspector').classList.toggle('open');
+document.getElementById('backdrop').onclick=closeMobilePanels;
+function closeMobilePanels(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('inspector').classList.remove('open'); }
+
+/* Toast */
+let toastT=null;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),1800); }
+
+drawField(); render();
+</script>
+</body>
+</html>
