@@ -438,7 +438,7 @@ function parseHash(){
   else if(pl!==null){ section='plays'; curPlay=Math.max(0,Math.min(plays.length-1,pl-1)); curStep=0; }
 }
 function buildHash(){ const p=[]; if(adminUnlocked) p.push('edit'); if(section==='signals') p.push('signals'); else p.push('play='+(curPlay+1)); return '#'+p.join('&'); }
-function syncHash(){ const nh=buildHash(); if(location.hash!==nh) history.replaceState(null,'',nh); }
+function syncHash(){ try{ const nh=buildHash(); if(location.hash!==nh && window.history && history.replaceState) history.replaceState(null,'',nh); }catch(e){} }
 let mode = "view";
 function defShown(){ return curPlayObj().showDef!==false; }
 let showLines = true;
