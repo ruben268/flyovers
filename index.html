@@ -582,15 +582,16 @@ function renderArrows(){
 const LINE_COLORS={red:'#ef4444',blue:'#3d7bed',yellow:'#f5b301'};
 const LINE_TINTS={red:'#fdeceb',blue:'#eef4ff',yellow:'#fdf4dd'};
 const LINE_MARKERS={red:'url(#adRed)',blue:'url(#adBlue)',yellow:'url(#adYel)'};
-function renderLines(preview){
+function renderLines(preview, stepOverride){
   const g=document.getElementById('annot'); g.innerHTML='';
-  if(playing) return;
-  const st=curPlayObj().steps[curStep];
+  const animating = stepOverride!=null;
+  if(playing && !animating) return;
+  const st=curPlayObj().steps[animating?stepOverride:curStep];
   const HATCH={red:'url(#hatchRed)',blue:'url(#hatchBlue)',yellow:'url(#hatchYel)'};
   const draw=(ln,isPreview)=>{
     const col=LINE_COLORS[ln.color]||'#f5b301';
     const op=(ln.opacity==null?1:ln.opacity);
-    const sel=!isPreview && selected && selected.side==='line' && selected.id===ln.id;
+    const sel=!isPreview && !animating && selected && selected.side==='line' && selected.id===ln.id;
     const grp=el('g', isPreview?{}:{class:'annot-item','data-annotid':ln.id});
     if(ln.type==='area'){
       const x=Math.min(ln.x1,ln.x2), y=Math.min(ln.y1,ln.y2), w=Math.abs(ln.x2-ln.x1), hh=Math.abs(ln.y2-ln.y1);
@@ -809,7 +810,7 @@ function animateTo(target){
   const play=curPlayObj();
   if(playing || target<0 || target>play.steps.length-1) return;
   const from=frameAt(curStep), to=frameAt(target);
-  playing=true; document.getElementById('annot').innerHTML=''; let start=null;
+  playing=true; renderLines(false, target); let start=null;
   function tick(ts){
     if(!playing) return;
     if(start===null) start=ts;
