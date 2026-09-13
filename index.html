@@ -556,7 +556,7 @@ function lerpFrame(a,b,t){
   const e=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
   const mix=(pa,pb)=> pa&&pb?{...pb,x:pa.x+(pb.x-pa.x)*e,y:pa.y+(pb.y-pa.y)*e}:(pb||pa);
   const byId=arr=>Object.fromEntries(arr.map(p=>[p.id,p]));
-  const merge=(A,B)=>{ const ids=new Set([...Object.keys(A),...Object.keys(B)]); return [...ids].map(id=>mix(A[id],B[id])); };
+  const merge=(A,B)=> Object.keys(B).map(id=>mix(A[id],B[id]));
   return { disc:mix({...a.disc,id:'disc'},{...b.disc,id:'disc'}),
            offense:merge(byId(a.offense),byId(b.offense)),
            defense:merge(byId(a.defense),byId(b.defense)),
