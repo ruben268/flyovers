@@ -831,12 +831,24 @@ function drawMovingLines(interp, to){
   if(interp.disc&&to.disc&&Math.hypot(to.disc.x-interp.disc.x,to.disc.y-interp.disc.y)>0.01)
     g.appendChild(el('line',{x1:nx(interp.disc.x),y1:ny(interp.disc.y),x2:nx(to.disc.x),y2:ny(to.disc.y),stroke:'var(--frisbee)','stroke-width':2.4,'stroke-dasharray':'1 6','stroke-linecap':'round','marker-end':'url(#ahDisc)'}));
 }
+function maxDisp(a,b){
+  const byId=arr=>Object.fromEntries((arr||[]).map(p=>[p.id,p]));
+  let mx=0;
+  const cmp=(A,B)=>{ for(const id in B){ if(A[id]){ const d=Math.hypot((B[id].x-A[id].x)*FW,(B[id].y-A[id].y)*FH); if(d>mx) mx=d; } } };
+  cmp(byId(a.offense),byId(b.offense));
+  cmp(byId(a.defense),byId(b.defense));
+  cmp(byId(a.labels),byId(b.labels));
+  const dd=Math.hypot((b.disc.x-a.disc.x)*FW,(b.disc.y-a.disc.y)*FH); if(dd>mx) mx=dd;
+  return mx;
+}
 function animateTo(target){
   const play=curPlayObj();
   if(target<0 || target>play.steps.length-1) return;
   if(playing){ cancelAnimationFrame(animRAF); animRAF=null; playing=false; if(animTarget!=null) curStep=animTarget; animTarget=null; }
   if(target===curStep){ render(); return; }
   const from=frameAt(curStep), to=frameAt(target);
+  const md=maxDisp(from,to);
+  if(md<8){ curStep=target; animTarget=null; render(); return; }
   animTarget=target;
   updateStepInfo(target);
   document.getElementById('prevBtn').disabled = target<=0;
