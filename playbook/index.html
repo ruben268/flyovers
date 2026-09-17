@@ -4,9 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Flyovers Playbook</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI0MwNEQzMiIvPjxlbGxpcHNlIGN4PSIxNiIgY3k9IjE2LjYiIHJ4PSIxMC41IiByeT0iNC42IiBmaWxsPSIjZmZmIi8+PGVsbGlwc2UgY3g9IjE2IiBjeT0iMTUuNCIgcng9IjYuMiIgcnk9IjIuNCIgZmlsbD0iI0MwNEQzMiIvPjwvc3ZnPg==">
+<meta name="theme-color" content="#C04D32">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#f4f6f8; --panel:#ffffff; --panel-2:#fafbfc; --line:#e5e9ed;
@@ -123,14 +125,14 @@
   .icon-btn.play{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
   .icon-btn svg{width:18px; height:18px}
   .icon-btn[disabled]{opacity:.32; pointer-events:none}
-  .tl-name{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:18px; letter-spacing:.03em; text-transform:uppercase; color:var(--ink); line-height:1.1; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .tl-name{font-family:Inter,sans-serif; font-weight:600; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted-2); line-height:1; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .tl-row{display:flex; align-items:center; gap:14px}
   .tl-text{flex:1; min-width:0}
   .tl-nav{display:flex; align-items:center; gap:8px; flex:0 0 auto}
   .tl-counter{font-family:"Barlow Condensed",sans-serif; font-weight:700; line-height:1; display:flex; align-items:baseline; gap:2px; min-width:26px; justify-content:center}
   .tl-counter .cur{font-size:26px; color:var(--ink)}
   .tl-counter .tot{font-size:14px; color:var(--muted)}
-  .tl-note{font-size:13px; color:var(--muted); line-height:1.45; margin-top:4px}
+  .tl-note{font-size:15px; color:var(--ink); font-weight:500; line-height:1.4; margin-top:5px}
   .tl-note b{color:var(--ink); font-weight:600}
   .steps{margin-top:10px}
   .step-note-input{width:100%; margin-top:8px; background:var(--panel); border:1px solid var(--line); color:var(--ink); border-radius:9px; padding:8px 10px; font-size:13px; outline:none}
@@ -195,7 +197,7 @@
     .topbar .toggle .lbl{display:none}
     .segmented button{padding:6px 9px; font-size:12px}
     .tl-counter .cur{font-size:22px}
-    .tl-note{font-size:12.5px}
+    .tl-note{font-size:14px}
   }
   /* --- Bewerkmenu (icoon-UI) --- */
   .grp{border:1px solid var(--line); border-radius:11px; padding:10px; display:flex; flex-direction:column; gap:8px}
@@ -312,10 +314,10 @@
             <button class="ib txt o" id="addOff" title="Aanvaller toevoegen"><svg class="ic"><use href="#ic-plus"/></svg>Aanvaller</button>
             <button class="ib txt r" id="addDef" title="Verdediger toevoegen"><svg class="ic"><use href="#ic-plus"/></svg>Verdediger</button>
           </div>
-          <div class="row"><button class="ib txt" id="addLabel" title="Naam-label toevoegen" style="flex:0 0 auto"><svg class="ic"><use href="#ic-tag"/></svg>Naam</button></div>
+          <div class="row"><button class="ib txt" id="addLabel" title="Naam-label toevoegen" style="flex:0 0 auto"><svg class="ic"><use href="#ic-tag"/></svg>Naam</button><button class="ib txt" id="addText" title="Tekstvak toevoegen" style="flex:0 0 auto"><svg class="ic"><use href="#ic-tag"/></svg>Tekst</button></div>
           <div id="labelEdit" style="display:none">
             <span class="gh fh">Naam &amp; tekst</span>
-            <input id="labelText" type="text" maxlength="24" style="width:100%; background:var(--panel); border:1px solid var(--line); color:var(--ink); border-radius:9px; padding:9px 10px; font-size:13px; outline:none">
+            <textarea id="labelText" maxlength="240" rows="2" style="width:100%; background:var(--panel); border:1px solid var(--line); color:var(--ink); border-radius:9px; padding:9px 10px; font-size:13px; outline:none; resize:vertical; font-family:inherit"></textarea>
             <div class="row" style="margin-top:7px; align-items:center">
               <select id="labelSize" style="flex:1" title="Tekstgrootte">
                 <option value="11">Klein</option>
@@ -554,7 +556,7 @@ function lerpFrame(a,b,t){
   const e=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
   const mix=(pa,pb)=> pa&&pb?{...pb,x:pa.x+(pb.x-pa.x)*e,y:pa.y+(pb.y-pa.y)*e}:(pb||pa);
   const byId=arr=>Object.fromEntries(arr.map(p=>[p.id,p]));
-  const merge=(A,B)=>{ const ids=new Set([...Object.keys(A),...Object.keys(B)]); return [...ids].map(id=>mix(A[id],B[id])); };
+  const merge=(A,B)=> Object.keys(B).map(id=>mix(A[id],B[id]));
   return { disc:mix({...a.disc,id:'disc'},{...b.disc,id:'disc'}),
            offense:merge(byId(a.offense),byId(b.offense)),
            defense:merge(byId(a.defense),byId(b.defense)),
@@ -580,15 +582,16 @@ function renderArrows(){
 const LINE_COLORS={red:'#ef4444',blue:'#3d7bed',yellow:'#f5b301'};
 const LINE_TINTS={red:'#fdeceb',blue:'#eef4ff',yellow:'#fdf4dd'};
 const LINE_MARKERS={red:'url(#adRed)',blue:'url(#adBlue)',yellow:'url(#adYel)'};
-function renderLines(preview){
+function renderLines(preview, stepOverride){
   const g=document.getElementById('annot'); g.innerHTML='';
-  if(playing) return;
-  const st=curPlayObj().steps[curStep];
+  const animating = stepOverride!=null;
+  if(playing && !animating) return;
+  const st=curPlayObj().steps[animating?stepOverride:curStep];
   const HATCH={red:'url(#hatchRed)',blue:'url(#hatchBlue)',yellow:'url(#hatchYel)'};
   const draw=(ln,isPreview)=>{
     const col=LINE_COLORS[ln.color]||'#f5b301';
     const op=(ln.opacity==null?1:ln.opacity);
-    const sel=!isPreview && selected && selected.side==='line' && selected.id===ln.id;
+    const sel=!isPreview && !animating && selected && selected.side==='line' && selected.id===ln.id;
     const grp=el('g', isPreview?{}:{class:'annot-item','data-annotid':ln.id});
     if(ln.type==='area'){
       const x=Math.min(ln.x1,ln.x2), y=Math.min(ln.y1,ln.y2), w=Math.abs(ln.x2-ln.x1), hh=Math.abs(ln.y2-ln.y1);
@@ -626,6 +629,31 @@ function updateToolUI(){
   svg.classList.toggle('drawing-tool', mode==='edit' && tool!=='move');
 }
 
+function renderTextBox(l,sel,layer){
+  const XH='http://www.w3.org/1999/xhtml';
+  const x=nx(l.x), y=ny(l.y), w=Math.max(6,(l.w||0.3)*FW), hh=Math.max(6,(l.h||0.12)*FH);
+  const g=el('g',{class:'player label textbox','data-side':'label','data-id':l.id});
+  const fo=el('foreignObject',{x,y,width:w,height:hh});
+  const div=document.createElementNS(XH,'div');
+  div.style.cssText='width:100%;height:100%;overflow:hidden;box-sizing:border-box;padding:1px 2px;'
+    +'font-family:Inter,sans-serif;color:#fff;line-height:1.18;'
+    +'white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;'
+    +'font-size:'+(l.size||13)+'px;font-weight:'+(l.bold?800:600)+';font-style:'+(l.italic?'italic':'normal')+';'
+    +'-webkit-text-stroke:.8px rgba(0,0,0,.9);paint-order:stroke fill;';
+  div.textContent = (l.text!=null && l.text!=='') ? l.text : 'Tekst';
+  fo.appendChild(div); g.appendChild(fo);
+  if(sel){
+    g.appendChild(el('rect',{x:x-3,y:y-3,width:w+6,height:hh+6,fill:'none',stroke:'var(--accent)','stroke-width':2,'stroke-dasharray':'5 3','pointer-events':'none'}));
+    if(!playing){
+      const W=l.w||0.3, H=l.h||0.12;
+      [['tl',l.x,l.y],['tr',l.x+W,l.y],['bl',l.x,l.y+H],['br',l.x+W,l.y+H]].forEach(([c,cx,cy])=>{
+        g.appendChild(el('rect',{class:'lbl-handle','data-handle':c,x:nx(cx)-5,y:ny(cy)-5,width:10,height:10,rx:2,fill:'#fff',stroke:'var(--accent)','stroke-width':2,'pointer-events':'all'}));
+      });
+    }
+  }
+  layer.appendChild(g);
+}
+
 function renderFrame(fr){
   const layer=document.getElementById('layer'); layer.innerHTML='';
   const drawPlayer=(p,side)=>{
@@ -651,6 +679,7 @@ function renderFrame(fr){
   }
   (fr.labels||[]).forEach(l=>{
     const sel = selected && selected.side==='label' && selected.id===l.id;
+    if(l.type==='text'){ renderTextBox(l,sel,layer); return; }
     const g=el('g',{class:'player label','data-side':'label','data-id':l.id,transform:`translate(${nx(l.x)},${ny(l.y)})`});
     const sz=l.size||13;
     const t=el('text',{'text-anchor':'middle',y:sz*0.34,'font-family':'Inter,sans-serif','font-weight':l.bold?800:600,'font-style':l.italic?'italic':'normal','font-size':sz,fill:'#1c2430'});
@@ -724,9 +753,7 @@ function render(){
 
   const s=play.steps[curStep];
   document.getElementById('tlName').textContent=play.name;
-  document.getElementById('curNum').textContent=curStep+1;
-  document.getElementById('totNum').textContent=play.steps.length;
-  document.getElementById('tlNote').textContent=s.note||'';
+  updateStepInfo(curStep);
   document.getElementById('stepNote').value=s.note||'';
   document.getElementById('steps').style.display=mode==='edit'?'flex':'none';
   updateToolUI();
@@ -791,6 +818,7 @@ function undo(){ if(!history.length) return; const s=JSON.parse(history.pop()); 
 
 /* Animatie: één actie vooruit of achteruit (2x trager) */
 const PER_SEG=1440;
+let animTarget=null;
 function drawMovingLines(interp, to){
   const g=document.getElementById('arrows'); g.innerHTML='';
   if(!showLines) return;
@@ -805,9 +833,15 @@ function drawMovingLines(interp, to){
 }
 function animateTo(target){
   const play=curPlayObj();
-  if(playing || target<0 || target>play.steps.length-1) return;
+  if(target<0 || target>play.steps.length-1) return;
+  if(playing){ cancelAnimationFrame(animRAF); animRAF=null; playing=false; if(animTarget!=null) curStep=animTarget; animTarget=null; }
+  if(target===curStep){ render(); return; }
   const from=frameAt(curStep), to=frameAt(target);
-  playing=true; document.getElementById('annot').innerHTML=''; let start=null;
+  animTarget=target;
+  updateStepInfo(target);
+  document.getElementById('prevBtn').disabled = target<=0;
+  document.getElementById('nextBtn').disabled = target>=play.steps.length-1;
+  playing=true; renderLines(false, target); let start=null;
   function tick(ts){
     if(!playing) return;
     if(start===null) start=ts;
@@ -815,14 +849,14 @@ function animateTo(target){
     const interp=lerpFrame(from,to,t);
     renderFrame(interp);
     drawMovingLines(interp,to);
-    if(t>=1){ playing=false; curStep=target; render(); return; }
+    if(t>=1){ playing=false; curStep=target; animTarget=null; render(); return; }
     animRAF=requestAnimationFrame(tick);
   }
   animRAF=requestAnimationFrame(tick);
 }
-function nextStep(){ animateTo(curStep+1); }
-function prevStep(){ if(playing||curStep===0) return; curStep--; render(); }
-function stopPlay(){ playing=false; if(animRAF) cancelAnimationFrame(animRAF); animRAF=null; }
+function nextStep(){ const base = (playing && animTarget!=null) ? animTarget : curStep; animateTo(base+1); }
+function prevStep(){ const base = (playing && animTarget!=null) ? animTarget : curStep; if(playing){ cancelAnimationFrame(animRAF); animRAF=null; playing=false; animTarget=null; } if(base<=0){ curStep=0; render(); return; } curStep=base-1; render(); }
+function stopPlay(){ playing=false; if(animRAF) cancelAnimationFrame(animRAF); animRAF=null; animTarget=null; }
 function updateNavButtons(){
   if(section==='signals'){
     document.getElementById('prevBtn').disabled = sigIdx===0;
@@ -832,9 +866,17 @@ function updateNavButtons(){
   document.getElementById('prevBtn').disabled = curStep===0;
   document.getElementById('nextBtn').disabled = curStep>=curPlayObj().steps.length-1;
 }
+function updateStepInfo(idx){
+  const play=curPlayObj();
+  idx=Math.max(0,Math.min(idx,play.steps.length-1));
+  const s=play.steps[idx];
+  document.getElementById('curNum').textContent=idx+1;
+  document.getElementById('totNum').textContent=play.steps.length;
+  document.getElementById('tlNote').textContent=(s&&s.note)||'';
+}
 
 /* Drag & tekenen */
-let drag=null, pendingSnap=false, annotDrag=null, resizeDrag=null;
+let drag=null, pendingSnap=false, annotDrag=null, resizeDrag=null, textResize=null;
 let tool='move', drawColor='blue', drawOpacity=1, drawing=null;
 function clientToNorm(e){ const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; const l=pt.matrixTransform(svg.getScreenCTM().inverse()); let {x,y}=inv(l.x,l.y); return {x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y))}; }
 svg.addEventListener('pointerdown',e=>{
@@ -848,11 +890,18 @@ svg.addEventListener('pointerdown',e=>{
       if(item){ selected={side:'line',id}; resizeDrag={id,corner,orig:{left:Math.min(item.x1,item.x2),right:Math.max(item.x1,item.x2),top:Math.min(item.y1,item.y2),bottom:Math.max(item.y1,item.y2)}}; pendingSnap=true; svg.setPointerCapture(e.pointerId); }
       return;
     }
+    const lh=e.target.closest('.lbl-handle');
+    if(lh){
+      const grp=lh.closest('[data-id]'); const id=grp&&grp.dataset.id; const corner=lh.dataset.handle;
+      const item=(curPlayObj().steps[curStep].labels||[]).find(l=>l.id===id);
+      if(item){ selected={side:'label',id}; textResize={id,corner}; pendingSnap=true; svg.setPointerCapture(e.pointerId); render(); }
+      return;
+    }
     const pg=e.target.closest('.player');
     if(pg){
       const side=pg.dataset.side,id=pg.dataset.id;
       if(side!=='disc') selected={side,id}; else selected=null;
-      drag={side,id,g:pg}; pendingSnap=true; pg.classList.add('dragging'); svg.setPointerCapture(e.pointerId); render();
+      drag={side,id,g:pg}; if(side==='label'){ const lb=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===id); if(lb&&lb.type==='text'){ const q=clientToNorm(e); drag.ox=q.x-lb.x; drag.oy=q.y-lb.y; } } pendingSnap=true; pg.classList.add('dragging'); svg.setPointerCapture(e.pointerId); render();
       return;
     }
     const ag=e.target.closest('.annot-item');
@@ -877,7 +926,7 @@ svg.addEventListener('pointermove',e=>{
     if(pendingSnap){ snapshot(); pendingSnap=false; }
     const {x,y}=clientToNorm(e); const s=curPlayObj().steps[curStep];
     if(drag.side==='disc'){ s.disc.x=x; s.disc.y=y; }
-    else if(drag.side==='label'){ if(!s.labels) s.labels=[]; const p=s.labels.find(p=>p.id===drag.id); if(p){p.x=x;p.y=y;} }
+    else if(drag.side==='label'){ if(!s.labels) s.labels=[]; const p=s.labels.find(p=>p.id===drag.id); if(p){ if(p.type==='text'&&drag.ox!=null){ let ax=x-drag.ox, ay=y-drag.oy; p.x=Math.max(0,Math.min(ax,1-(p.w||0.3))); p.y=Math.max(0,Math.min(ay,1-(p.h||0.12))); } else { p.x=x;p.y=y; } } }
     else { const arr=drag.side==='offense'?s.offense:s.defense; const p=arr.find(p=>p.id===drag.id); if(p){p.x=x;p.y=y;} }
     renderFrame(frameAt(curStep));
   } else if(resizeDrag){
@@ -895,6 +944,15 @@ svg.addEventListener('pointermove',e=>{
         item.x1=left; item.y1=top; item.x2=right; item.y2=bottom; }
     }
     renderLines();
+  } else if(textResize){
+    if(pendingSnap){ snapshot(); pendingSnap=false; }
+    const {x,y}=clientToNorm(e); const c=textResize.corner;
+    const it=(curPlayObj().steps[curStep].labels||[]).find(l=>l.id===textResize.id);
+    if(it){ const MIN=0.05; let left=it.x,right=it.x+(it.w||0.3),top=it.y,bottom=it.y+(it.h||0.12);
+      if(c[0]==='t') top=Math.min(y,bottom-MIN); if(c[0]==='b') bottom=Math.max(y,top+MIN);
+      if(c[1]==='l') left=Math.min(x,right-MIN); if(c[1]==='r') right=Math.max(x,left+MIN);
+      it.x=left; it.y=top; it.w=right-left; it.h=bottom-top; }
+    renderFrame(frameAt(curStep));
   } else if(annotDrag){
     if(pendingSnap){ snapshot(); pendingSnap=false; }
     const {x,y}=clientToNorm(e); const o=annotDrag.orig;
@@ -915,6 +973,7 @@ function endInteraction(){
   if(drag){ drag.g.classList.remove('dragging'); drag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; renderArrows(); }
   if(annotDrag){ annotDrag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; }
   if(resizeDrag){ resizeDrag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; }
+  if(textResize){ textResize=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; }
   if(drawing){
     const isArea=drawing.type==='area';
     const ok = isArea ? (Math.abs(drawing.x2-drawing.x1)>0.03 && Math.abs(drawing.y2-drawing.y1)>0.03)
@@ -931,7 +990,8 @@ function addStep(){ snapshot(); const play=curPlayObj(); play.steps.splice(curSt
 function deleteStep(){ const play=curPlayObj(); if(play.steps.length<=1){toast('Een play heeft minstens één stap.');return;} snapshot(); play.steps.splice(curStep,1); curStep=Math.max(0,curStep-1); render(); }
 function addPlayer(side){ snapshot(); curPlayObj().steps.forEach(s=>{ const arr=side==='offense'?s.offense:s.defense; const id=(side==='offense'?'o':'d')+uid(); arr.push(P(id,String(arr.length+1),.5,.55)); }); toast(side==='offense'?'Aanvaller toegevoegd':'Verdediger toegevoegd'); render(); }
 function addLabel(){ snapshot(); const id='l'+uid(); curPlayObj().steps.forEach(s=>{ if(!s.labels) s.labels=[]; s.labels.push({id,text:'Naam',x:.5,y:.5,size:13,bold:false,italic:false}); }); selected={side:'label',id}; render(); toast('Naam toegevoegd'); }
-function deletePlayer(){ if(!selected) return; snapshot(); if(selected.side==='line'){ const st=curPlayObj().steps[curStep]; if(st.lines) st.lines=st.lines.filter(l=>l.id!==selected.id); selected=null; render(); return; } const k=selected.side==='offense'?'offense':selected.side==='defense'?'defense':'labels'; curPlayObj().steps.forEach(s=>{ if(s[k]) s[k]=s[k].filter(p=>p.id!==selected.id); }); selected=null; render(); }
+function addText(){ snapshot(); const id='t'+uid(); curPlayObj().steps.forEach(s=>{ if(!s.labels) s.labels=[]; s.labels.push({id,type:'text',text:'Tekst',x:.34,y:.44,w:.32,h:.12,size:15,bold:false,italic:false}); }); selected={side:'label',id}; tool='move'; render(); toast('Tekstvak toegevoegd'); }
+function deletePlayer(){ if(!selected) return; snapshot(); if(selected.side==='line'){ const st=curPlayObj().steps[curStep]; if(st.lines) st.lines=st.lines.filter(l=>l.id!==selected.id); selected=null; render(); return; } const k=selected.side==='offense'?'offense':selected.side==='defense'?'defense':'labels'; curPlayObj().steps.forEach((s,i)=>{ if(i>=curStep && s[k]) s[k]=s[k].filter(p=>p.id!==selected.id); }); selected=null; render(); }
 function newPlay(){ snapshot(); const p={id:uid(),name:"Nieuwe play",category:"offense",endzone:"bottom",description:"",
   steps:[{note:"",disc:{x:.40,y:.80},
     offense:[P("o1","1",.40,.80),P("o2","2",.60,.82),P("o3","3",.50,.42),P("o4","4",.50,.50),P("o5","5",.50,.58),P("o6","6",.50,.66),P("o7","7",.50,.34)],
@@ -957,7 +1017,7 @@ document.getElementById('ezSelect').onchange=e=>{ snapshot(); curPlayObj().endzo
 document.getElementById('stepNote').onfocus=()=>snapshot();
 document.getElementById('stepNote').oninput=e=>{ curPlayObj().steps[curStep].note=e.target.value; };
 document.getElementById('addOff').onclick=()=>addPlayer('offense');
-document.getElementById('addLabel').onclick=addLabel;
+document.getElementById('addLabel').onclick=addLabel; document.getElementById('addText').onclick=addText;
 document.getElementById('labelText').onfocus=()=>snapshot();
 document.getElementById('labelText').oninput=e=>{ if(!selected||selected.side!=='label') return; curPlayObj().steps.forEach(s=>{ const l=(s.labels||[]).find(p=>p.id===selected.id); if(l) l.text=e.target.value; }); renderFrame(frameAt(curStep)); };
 function labelProp(fn){ if(!selected||selected.side!=='label') return; snapshot(); curPlayObj().steps.forEach(s=>{ const l=(s.labels||[]).find(p=>p.id===selected.id); if(l) fn(l); }); }
