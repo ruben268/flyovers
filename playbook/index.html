@@ -4,8 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Flyovers Playbook</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI0MwNEQzMiIvPjxlbGxpcHNlIGN4PSIxNiIgY3k9IjE2LjYiIHJ4PSIxMC41IiByeT0iNC42IiBmaWxsPSIjZmZmIi8+PGVsbGlwc2UgY3g9IjE2IiBjeT0iMTUuNCIgcng9IjYuMiIgcnk9IjIuNCIgZmlsbD0iI0MwNEQzMiIvPjwvc3ZnPg==">
-<meta name="theme-color" content="#C04D32">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -556,7 +554,7 @@ function lerpFrame(a,b,t){
   const e=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
   const mix=(pa,pb)=> pa&&pb?{...pb,x:pa.x+(pb.x-pa.x)*e,y:pa.y+(pb.y-pa.y)*e}:(pb||pa);
   const byId=arr=>Object.fromEntries(arr.map(p=>[p.id,p]));
-  const merge=(A,B)=> Object.keys(B).map(id=>mix(A[id],B[id]));
+  const merge=(A,B)=>{ const ids=new Set([...Object.keys(A),...Object.keys(B)]); return [...ids].map(id=>mix(A[id],B[id])); };
   return { disc:mix({...a.disc,id:'disc'},{...b.disc,id:'disc'}),
            offense:merge(byId(a.offense),byId(b.offense)),
            defense:merge(byId(a.defense),byId(b.defense)),
@@ -582,16 +580,15 @@ function renderArrows(){
 const LINE_COLORS={red:'#ef4444',blue:'#3d7bed',yellow:'#f5b301'};
 const LINE_TINTS={red:'#fdeceb',blue:'#eef4ff',yellow:'#fdf4dd'};
 const LINE_MARKERS={red:'url(#adRed)',blue:'url(#adBlue)',yellow:'url(#adYel)'};
-function renderLines(preview, stepOverride){
+function renderLines(preview){
   const g=document.getElementById('annot'); g.innerHTML='';
-  const animating = stepOverride!=null;
-  if(playing && !animating) return;
-  const st=curPlayObj().steps[animating?stepOverride:curStep];
+  if(playing) return;
+  const st=curPlayObj().steps[curStep];
   const HATCH={red:'url(#hatchRed)',blue:'url(#hatchBlue)',yellow:'url(#hatchYel)'};
   const draw=(ln,isPreview)=>{
     const col=LINE_COLORS[ln.color]||'#f5b301';
     const op=(ln.opacity==null?1:ln.opacity);
-    const sel=!isPreview && !animating && selected && selected.side==='line' && selected.id===ln.id;
+    const sel=!isPreview && selected && selected.side==='line' && selected.id===ln.id;
     const grp=el('g', isPreview?{}:{class:'annot-item','data-annotid':ln.id});
     if(ln.type==='area'){
       const x=Math.min(ln.x1,ln.x2), y=Math.min(ln.y1,ln.y2), w=Math.abs(ln.x2-ln.x1), hh=Math.abs(ln.y2-ln.y1);
@@ -810,7 +807,7 @@ function animateTo(target){
   const play=curPlayObj();
   if(playing || target<0 || target>play.steps.length-1) return;
   const from=frameAt(curStep), to=frameAt(target);
-  playing=true; renderLines(false, target); let start=null;
+  playing=true; document.getElementById('annot').innerHTML=''; let start=null;
   function tick(ts){
     if(!playing) return;
     if(start===null) start=ts;
@@ -934,7 +931,7 @@ function addStep(){ snapshot(); const play=curPlayObj(); play.steps.splice(curSt
 function deleteStep(){ const play=curPlayObj(); if(play.steps.length<=1){toast('Een play heeft minstens één stap.');return;} snapshot(); play.steps.splice(curStep,1); curStep=Math.max(0,curStep-1); render(); }
 function addPlayer(side){ snapshot(); curPlayObj().steps.forEach(s=>{ const arr=side==='offense'?s.offense:s.defense; const id=(side==='offense'?'o':'d')+uid(); arr.push(P(id,String(arr.length+1),.5,.55)); }); toast(side==='offense'?'Aanvaller toegevoegd':'Verdediger toegevoegd'); render(); }
 function addLabel(){ snapshot(); const id='l'+uid(); curPlayObj().steps.forEach(s=>{ if(!s.labels) s.labels=[]; s.labels.push({id,text:'Naam',x:.5,y:.5,size:13,bold:false,italic:false}); }); selected={side:'label',id}; render(); toast('Naam toegevoegd'); }
-function deletePlayer(){ if(!selected) return; snapshot(); if(selected.side==='line'){ const st=curPlayObj().steps[curStep]; if(st.lines) st.lines=st.lines.filter(l=>l.id!==selected.id); selected=null; render(); return; } const k=selected.side==='offense'?'offense':selected.side==='defense'?'defense':'labels'; curPlayObj().steps.forEach((s,i)=>{ if(i>=curStep && s[k]) s[k]=s[k].filter(p=>p.id!==selected.id); }); selected=null; render(); }
+function deletePlayer(){ if(!selected) return; snapshot(); if(selected.side==='line'){ const st=curPlayObj().steps[curStep]; if(st.lines) st.lines=st.lines.filter(l=>l.id!==selected.id); selected=null; render(); return; } const k=selected.side==='offense'?'offense':selected.side==='defense'?'defense':'labels'; curPlayObj().steps.forEach(s=>{ if(s[k]) s[k]=s[k].filter(p=>p.id!==selected.id); }); selected=null; render(); }
 function newPlay(){ snapshot(); const p={id:uid(),name:"Nieuwe play",category:"offense",endzone:"bottom",description:"",
   steps:[{note:"",disc:{x:.40,y:.80},
     offense:[P("o1","1",.40,.80),P("o2","2",.60,.82),P("o3","3",.50,.42),P("o4","4",.50,.50),P("o5","5",.50,.58),P("o6","6",.50,.66),P("o7","7",.50,.34)],
