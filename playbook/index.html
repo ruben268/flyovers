@@ -126,6 +126,23 @@
   .icon-btn svg{width:18px; height:18px}
   .icon-btn[disabled]{opacity:.32; pointer-events:none}
   .tl-name{font-family:Inter,sans-serif; font-weight:600; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted-2); line-height:1; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .tl-kick{display:flex; align-items:center; gap:7px; min-width:0}
+  .tl-kick .tl-name{min-width:0}
+  .tl-tag{font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 7px; border-radius:999px; white-space:nowrap; flex:0 0 auto}
+  .tl-tag.off{background:rgba(61,123,237,.14); color:#2159c9}
+  .tl-tag.def{background:rgba(239,68,68,.13); color:#c0362f}
+  .tl-tag.ez{background:rgba(245,179,1,.20); color:#946a00}
+  .modal-list{max-height:230px; overflow:auto; border:1px solid var(--line); border-radius:10px; padding:6px; margin-bottom:10px}
+  .modal-list .mhead{display:flex; justify-content:space-between; align-items:center; padding:3px 6px 7px; font-size:12px; color:var(--muted)}
+  .modal-list .mhead button{font-size:12px; color:var(--accent); background:none; border:none; cursor:pointer; padding:2px 6px; border-radius:6px}
+  .modal-list .mhead button:hover{background:var(--panel-2)}
+  .modal-list .mrow{display:flex; align-items:center; gap:9px; padding:6px 8px; border-radius:8px; cursor:pointer}
+  .modal-list .mrow:hover{background:var(--panel-2)}
+  .modal-list .mrow input{width:16px; height:16px; accent-color:var(--accent); flex:0 0 auto}
+  .modal-list .mrow .mnm{flex:1; min-width:0; font-size:13.5px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .modal-list .mrow .mst{font-size:11px; color:var(--muted); flex:0 0 auto; white-space:nowrap}
+  .modal-list .mrow .mst.new{color:#1f8f4e}
+  .modal-list .mrow .mst.upd{color:#946a00}
   .tl-row{display:flex; align-items:center; gap:14px}
   .tl-text{flex:1; min-width:0}
   .tl-nav{display:flex; align-items:center; gap:8px; flex:0 0 auto}
@@ -352,7 +369,7 @@
     <div class="timeline">
       <div class="tl-row">
         <div class="tl-text">
-          <div class="tl-name" id="tlName"></div>
+          <div class="tl-kick"><span class="tl-tag" id="tlType"></span><span class="tl-name" id="tlName"></span></div>
           <div class="tl-note" id="tlNote"></div>
         </div>
         <div class="tl-nav">
@@ -372,12 +389,14 @@
     <h3 id="modalTitle">Exporteer playbook</h3>
     <div class="body">
       <p class="hint" id="modalHint"></p>
+      <div id="modalList" class="modal-list" style="display:none"></div>
       <textarea id="modalText" spellcheck="false"></textarea>
     </div>
     <div class="foot">
       <button class="btn ghost" id="modalClose">Sluiten</button>
       <button class="btn" id="modalCopy" style="display:none">Kopieer</button>
       <button class="btn" id="modalDownload" style="display:none">Download .json</button>
+      <button class="btn" id="modalMerge" style="display:none">Voeg geselecteerde toe</button>
       <button class="btn primary" id="modalLoad" style="display:none">Laad playbook</button>
     </div>
   </div>
@@ -752,7 +771,7 @@ function render(){
   }
 
   const s=play.steps[curStep];
-  document.getElementById('tlName').textContent=play.name;
+  document.getElementById('tlName').textContent=play.name; { const _tt=document.getElementById('tlType'); const _tx={offense:'Offense',defense:'Defense',endzone:'Endzone'}; const _tc={offense:'off',defense:'def',endzone:'ez'}; _tt.textContent=_tx[play.category]||''; _tt.className='tl-tag '+(_tc[play.category]||''); }
   updateStepInfo(curStep);
   document.getElementById('stepNote').value=s.note||'';
   document.getElementById('steps').style.display=mode==='edit'?'flex':'none';
@@ -1057,9 +1076,15 @@ document.addEventListener('keydown',e=>{
 
 /* Import / export */
 const modal=document.getElementById('modal');
-function openExport(){ document.getElementById('modalTitle').textContent='Publiceren: plays.json'; document.getElementById('modalHint').textContent='Dit is je volledige playbook. Download het als plays.json en upload dat bestand naar je GitHub-repo (naast index.html) om te publiceren.'; const t=document.getElementById('modalText'); t.value=JSON.stringify(plays,null,2); t.readOnly=true; toggleModalBtns({copy:true,download:true,load:false}); modal.classList.add('on'); }
-function openImport(){ document.getElementById('modalTitle').textContent='Importeer playbook'; document.getElementById('modalHint').textContent='Plak hier een eerder geëxporteerd playbook (JSON) en laad het in.'; const t=document.getElementById('modalText'); t.value=''; t.readOnly=false; toggleModalBtns({copy:false,download:false,load:true}); modal.classList.add('on'); }
-function toggleModalBtns({copy,download,load}){ document.getElementById('modalCopy').style.display=copy?'inline-flex':'none'; document.getElementById('modalDownload').style.display=download?'inline-flex':'none'; document.getElementById('modalLoad').style.display=load?'inline-flex':'none'; }
+let exportSel=[], importData=null, importSel=[], modalMode=null;
+const CATFULL={offense:'Offense',defense:'Defense',endzone:'Endzone'};
+function openExport(){ modalMode='export'; document.getElementById('modalTitle').textContent='Publiceren: plays.json'; document.getElementById('modalHint').textContent='Kies welke plays je wil downloaden (standaard alle). Upload het bestand daarna naar je GitHub-repo, naast index.html.'; const t=document.getElementById('modalText'); t.readOnly=true; exportSel=plays.map(()=>true); renderExportList(); toggleModalBtns({copy:true,download:true,load:false,merge:false,list:true}); modal.classList.add('on'); }
+function syncExportText(){ const sel=plays.filter((p,i)=>exportSel[i]); document.getElementById('modalText').value=JSON.stringify(sel,null,2); }
+function renderExportList(){ const box=document.getElementById('modalList'); box.innerHTML=''; const head=document.createElement('div'); head.className='mhead'; head.innerHTML='<span>'+exportSel.filter(Boolean).length+' van '+plays.length+' geselecteerd</span>'; const allOn=exportSel.every(Boolean); const tgl=document.createElement('button'); tgl.textContent=allOn?'Niets':'Alles'; tgl.onclick=()=>{ const v=!allOn; exportSel=plays.map(()=>v); renderExportList(); }; head.appendChild(tgl); box.appendChild(head); plays.forEach((p,i)=>{ const row=document.createElement('label'); row.className='mrow'; row.innerHTML='<input type="checkbox" '+(exportSel[i]?'checked':'')+'><span class="mnm">'+escapeHtml(p.name||'(naamloos)')+'</span><span class="mst">'+(CATFULL[p.category]||'')+'</span>'; row.querySelector('input').onchange=e=>{ exportSel[i]=e.target.checked; renderExportList(); }; box.appendChild(row); }); syncExportText(); }
+function openImport(){ modalMode='import'; document.getElementById('modalTitle').textContent='Importeer playbook'; document.getElementById('modalHint').textContent='Plak een geëxporteerd playbook (JSON). Kies dan welke plays je toevoegt of bijwerkt, of vervang je volledige playbook.'; const t=document.getElementById('modalText'); t.value=''; t.readOnly=false; document.getElementById('modalLoad').textContent='Vervang alles'; importData=null; importSel=[]; document.getElementById('modalList').innerHTML=''; toggleModalBtns({copy:false,download:false,load:true,merge:false,list:false}); modal.classList.add('on'); }
+function parseImport(){ const raw=document.getElementById('modalText').value.trim(); const box=document.getElementById('modalList'); if(!raw){ importData=null; box.innerHTML=''; toggleModalBtns({load:true}); return; } let d; try{ d=JSON.parse(raw); }catch{ importData=null; box.innerHTML=''; toggleModalBtns({load:true}); return; } if(!Array.isArray(d)||!d.length){ importData=null; box.innerHTML=''; toggleModalBtns({load:true}); return; } importData=d; importSel=d.map(()=>true); renderImportList(); toggleModalBtns({load:true,merge:true,list:true}); }
+function renderImportList(){ const box=document.getElementById('modalList'); box.innerHTML=''; const head=document.createElement('div'); head.className='mhead'; head.innerHTML='<span>'+importSel.filter(Boolean).length+' van '+importData.length+' geselecteerd</span>'; const allOn=importSel.every(Boolean); const tgl=document.createElement('button'); tgl.textContent=allOn?'Niets':'Alles'; tgl.onclick=()=>{ const v=!allOn; importSel=importData.map(()=>v); renderImportList(); }; head.appendChild(tgl); box.appendChild(head); importData.forEach((p,i)=>{ const exists=plays.find(q=>q.id===p.id); const row=document.createElement('label'); row.className='mrow'; const st=exists?'<span class="mst upd">vervangt: '+escapeHtml(exists.name||'')+'</span>':'<span class="mst new">nieuw</span>'; row.innerHTML='<input type="checkbox" '+(importSel[i]?'checked':'')+'><span class="mnm">'+escapeHtml(p.name||'(naamloos)')+'</span>'+st; row.querySelector('input').onchange=e=>{ importSel[i]=e.target.checked; renderImportList(); }; box.appendChild(row); }); }
+function toggleModalBtns({copy,download,load,merge,list}){ document.getElementById('modalCopy').style.display=copy?'inline-flex':'none'; document.getElementById('modalDownload').style.display=download?'inline-flex':'none'; document.getElementById('modalLoad').style.display=load?'inline-flex':'none'; document.getElementById('modalMerge').style.display=merge?'inline-flex':'none'; document.getElementById('modalList').style.display=list?'block':'none'; }
 document.getElementById('exportBtn').onclick=openExport;
 document.getElementById('importBtn').onclick=openImport;
 document.getElementById('modalClose').onclick=()=>modal.classList.remove('on');
@@ -1067,6 +1092,8 @@ modal.addEventListener('click',e=>{ if(e.target===modal) modal.classList.remove(
 document.getElementById('modalCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(document.getElementById('modalText').value); toast('Gekopieerd naar klembord'); }catch{ toast('Kopiëren niet toegelaten hier'); } };
 document.getElementById('modalDownload').onclick=()=>{ const b=new Blob([document.getElementById('modalText').value],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='plays.json'; a.click(); URL.revokeObjectURL(a.href); };
 document.getElementById('modalLoad').onclick=()=>{ try{ const d=JSON.parse(document.getElementById('modalText').value); if(!Array.isArray(d)||!d.length) throw new Error(); snapshot(); plays=d; curPlay=0; curStep=0; selected=null; stopPlay(); render(); modal.classList.remove('on'); toast('Playbook geladen'); }catch{ toast('Ongeldige JSON'); } };
+document.getElementById('modalMerge').onclick=()=>{ if(!importData){ toast('Niets om te importeren'); return; } const chosen=importData.filter((p,i)=>importSel[i]); if(!chosen.length){ toast('Niets geselecteerd'); return; } snapshot(); let added=0,updated=0; chosen.forEach(p=>{ if(!p.id) p.id=uid(); if(!Array.isArray(p.steps)) p.steps=[]; const idx=plays.findIndex(q=>q.id===p.id); if(idx>=0){ plays[idx]=p; updated++; } else { plays.push(p); added++; } }); curPlay=Math.max(0,Math.min(curPlay,plays.length-1)); curStep=0; selected=null; stopPlay(); render(); modal.classList.remove('on'); toast(added+' toegevoegd, '+updated+' bijgewerkt'); };
+document.getElementById('modalText').addEventListener('input',()=>{ if(modalMode==='import') parseImport(); });
 
 /* Mobile panels */
 document.getElementById('menuBtn').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
