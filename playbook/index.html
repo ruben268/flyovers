@@ -253,6 +253,7 @@
   <symbol id="ic-tag" viewBox="0 0 24 24"><path d="M4 7h16M8 7v11M16 7v11"/></symbol>
   <symbol id="ic-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 12h10l1-12"/></symbol>
   <symbol id="ic-undo" viewBox="0 0 24 24"><path d="M9 7L4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12"/></symbol>
+  <symbol id="ic-redo" viewBox="0 0 24 24"><path d="M15 7l5 5-5 5"/><path d="M20 12H10a6 6 0 0 0 0 12"/></symbol>
 </defs></svg>
 <div class="app">
   <aside class="sidebar" id="sidebar">
@@ -321,7 +322,8 @@
 
         <div class="actionbar">
           <button class="ib sq tool" data-tool="move" title="Verplaatsen / selecteren op het veld"><svg class="ic"><use href="#ic-hand"/></svg></button>
-          <button class="ib sq" id="undoBtn" title="Laatste actie ongedaan maken" disabled><svg class="ic"><use href="#ic-undo"/></svg></button>
+          <button class="ib sq" id="undoBtn" title="Ongedaan maken" disabled><svg class="ic"><use href="#ic-undo"/></svg></button>
+          <button class="ib sq" id="redoBtn" title="Opnieuw uitvoeren" disabled><svg class="ic"><use href="#ic-redo"/></svg></button>
           <button class="ib sq danger" id="delPlayer" title="Geselecteerd element verwijderen" disabled><svg class="ic"><use href="#ic-trash"/></svg></button>
         </div>
 
@@ -754,6 +756,7 @@ function render(){
     document.getElementById('opacityLbl').textContent = isLine ? 'Zichtbaarheid selectie' : 'Zichtbaarheid nieuwe tekening';
     if(isLine){ const it=(curPlayObj().steps[curStep].lines||[]).find(l=>l.id===selected.id); document.getElementById('lineOpacity').value = it ? (it.opacity==null?1:it.opacity) : 1; } else { document.getElementById('lineOpacity').value = drawOpacity; } }
   document.getElementById('undoBtn').disabled=history.length===0;
+  document.getElementById('redoBtn').disabled=redoStack.length===0;
   updateNavButtons();
   document.getElementById('defToggle').checked=defShown();
   document.getElementById('linesToggle').checked=showLines;
@@ -832,8 +835,13 @@ function goNext(){ if(section==='signals') nextSignal(); else nextStep(); }
 function goPrev(){ if(section==='signals') prevSignal(); else prevStep(); }
 
 /* History / undo */
-function snapshot(){ history.push(JSON.stringify({plays,curPlay,curStep})); if(history.length>60) history.shift(); document.getElementById('undoBtn').disabled=false; }
-function undo(){ if(!history.length) return; const s=JSON.parse(history.pop()); plays=s.plays; curPlay=Math.min(s.curPlay,plays.length-1); curStep=Math.min(s.curStep,plays[curPlay].steps.length-1); selected=null; stopPlay(); render(); }
+let redoStack=[];
+function snapshot(){ history.push(JSON.stringify({plays,curPlay,curStep})); if(history.length>60) history.shift(); redoStack=[]; }
+function restoreState(str){ const s=JSON.parse(str); plays=s.plays; curPlay=Math.min(s.curPlay,plays.length-1); curStep=Math.min(s.curStep,plays[curPlay].steps.length-1); selected=null; stopPlay(); render(); }
+function undo(){ if(!history.length) return; redoStack.push(JSON.stringify({plays,curPlay,curStep})); restoreState(history.pop()); }
+function redo(){ if(!redoStack.length) return; history.push(JSON.stringify({plays,curPlay,curStep})); restoreState(redoStack.pop()); }
+function copySel(){ if(!selected) return; const st=curPlayObj().steps[curStep]; if(selected.side==='label'){ const it=(st.labels||[]).find(p=>p.id===selected.id); if(it){ clipboard={kind:'label',data:JSON.parse(JSON.stringify(it))}; toast('Naam gekopieerd'); } } else if(selected.side==='line'){ const it=(st.lines||[]).find(p=>p.id===selected.id); if(it){ clipboard={kind:'line',data:JSON.parse(JSON.stringify(it))}; toast('Tekening gekopieerd'); } } }
+function pasteClip(){ if(!clipboard) return; snapshot(); const st=curPlayObj().steps[curStep]; const d=JSON.parse(JSON.stringify(clipboard.data)); const cl=v=>Math.max(0,Math.min(1,v)); const off=0.03; if(clipboard.kind==='label'){ d.id='l'+uid(); d.x=cl((d.x||.5)+off); d.y=cl((d.y||.5)+off); if(!st.labels) st.labels=[]; st.labels.push(d); selected={side:'label',id:d.id}; } else { d.id='ln'+uid(); d.x1=cl(d.x1+off); d.y1=cl(d.y1+off); d.x2=cl(d.x2+off); d.y2=cl(d.y2+off); if(!st.lines) st.lines=[]; st.lines.push(d); selected={side:'line',id:d.id}; } render(); toast('Geplakt'); }
 
 /* Animatie: één actie vooruit of achteruit (2x trager) */
 const PER_SEG=1440;
@@ -909,6 +917,7 @@ function updateStepInfo(idx){
 /* Drag & tekenen */
 let drag=null, pendingSnap=false, annotDrag=null, resizeDrag=null, textResize=null;
 let tool='move', drawColor='blue', drawOpacity=1, drawing=null;
+let clipboard=null;
 function clientToNorm(e){ const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; const l=pt.matrixTransform(svg.getScreenCTM().inverse()); let {x,y}=inv(l.x,l.y); return {x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y))}; }
 svg.addEventListener('pointerdown',e=>{
   if(mode!=='edit') return;
@@ -1001,9 +1010,9 @@ svg.addEventListener('pointermove',e=>{
   }
 });
 function endInteraction(){
-  if(drag){ drag.g.classList.remove('dragging'); drag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; renderArrows(); }
-  if(annotDrag){ annotDrag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; }
-  if(resizeDrag){ resizeDrag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; }
+  if(drag){ drag.g.classList.remove('dragging'); drag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; document.getElementById('redoBtn').disabled=redoStack.length===0; renderArrows(); }
+  if(annotDrag){ annotDrag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; document.getElementById('redoBtn').disabled=redoStack.length===0; }
+  if(resizeDrag){ resizeDrag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; document.getElementById('redoBtn').disabled=redoStack.length===0; }
   if(textResize){ textResize=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; }
   if(drawing){
     const isArea=drawing.type==='area';
@@ -1039,6 +1048,7 @@ document.getElementById('prevBtn').onclick=goPrev;
 document.getElementById('linesToggle').onchange=e=>{ showLines=e.target.checked; renderArrows(); };
 document.getElementById('defToggle').onchange=e=>{ curPlayObj().showDef=e.target.checked; render(); };
 document.getElementById('undoBtn').onclick=undo;
+document.getElementById('redoBtn').onclick=redo;
 document.getElementById('titleInput').onfocus=()=>snapshot();
 document.getElementById('titleInput').oninput=e=>{ curPlayObj().name=e.target.value; document.getElementById('titleView').textContent=e.target.value; };
 document.getElementById('descInput').onfocus=()=>snapshot();
@@ -1050,8 +1060,8 @@ document.getElementById('stepNote').oninput=e=>{ curPlayObj().steps[curStep].not
 document.getElementById('addOff').onclick=()=>addPlayer('offense');
 document.getElementById('addLabel').onclick=addLabel; document.getElementById('addText').onclick=addText;
 document.getElementById('labelText').onfocus=()=>snapshot();
-document.getElementById('labelText').oninput=e=>{ if(!selected||selected.side!=='label') return; curPlayObj().steps.forEach(s=>{ const l=(s.labels||[]).find(p=>p.id===selected.id); if(l) l.text=e.target.value; }); renderFrame(frameAt(curStep)); };
-function labelProp(fn){ if(!selected||selected.side!=='label') return; snapshot(); curPlayObj().steps.forEach(s=>{ const l=(s.labels||[]).find(p=>p.id===selected.id); if(l) fn(l); }); }
+document.getElementById('labelText').oninput=e=>{ if(!selected||selected.side!=='label') return; const l=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===selected.id); if(l) l.text=e.target.value; renderFrame(frameAt(curStep)); };
+function labelProp(fn){ if(!selected||selected.side!=='label') return; snapshot(); const l=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===selected.id); if(l) fn(l); }
 document.getElementById('labelSize').onchange=e=>{ const v=parseInt(e.target.value,10); labelProp(l=>l.size=v); renderFrame(frameAt(curStep)); };
 document.getElementById('labelBold').onclick=()=>{ if(!selected||selected.side!=='label') return; const cur=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===selected.id); const nv=!(cur&&cur.bold); labelProp(l=>l.bold=nv); render(); };
 document.getElementById('labelItalic').onclick=()=>{ if(!selected||selected.side!=='label') return; const cur=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===selected.id); const nv=!(cur&&cur.italic); labelProp(l=>l.italic=nv); render(); };
@@ -1066,12 +1076,15 @@ document.getElementById('delPlay').onclick=deletePlay;
 document.getElementById('newPlayBtn').onclick=newPlay;
 
 document.addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ if(mode==='edit'){ e.preventDefault(); undo(); } return; }
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ if(mode==='edit'){ e.preventDefault(); if(e.shiftKey) redo(); else undo(); } return; }
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){ if(mode==='edit'){ e.preventDefault(); redo(); } return; }
   if(/input|textarea|select/.test((e.target.tagName||'').toLowerCase())) return;
   if(e.key==='ArrowRight'){ e.preventDefault(); goNext(); }
   else if(e.key==='ArrowLeft'){ e.preventDefault(); goPrev(); }
   else if(e.key===' '){ e.preventDefault(); goNext(); }
   else if((e.key==='Delete'||e.key==='Backspace')&&mode==='edit'&&section==='plays'){ if(selected) deletePlayer(); else deleteStep(); }
+  else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='c'&&mode==='edit'&&section==='plays'&&selected&&(selected.side==='label'||selected.side==='line')){ e.preventDefault(); copySel(); }
+  else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='v'&&mode==='edit'&&section==='plays'&&clipboard){ e.preventDefault(); pasteClip(); }
 });
 
 /* Import / export */
