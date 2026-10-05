@@ -166,6 +166,10 @@
   .annot-handle.h-tr,.annot-handle.h-bl{cursor:nesw-resize}
   #arrows{pointer-events:none}
   #ezone{pointer-events:none}
+  #bends{pointer-events:none}
+  svg.editing #bends{pointer-events:auto}
+  .bend-handle{cursor:grab}
+  .bend-handle:active{cursor:grabbing}
 
   .toggle{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); user-select:none; cursor:pointer}
   .insp-block .toggle{display:inline-flex; text-transform:none; letter-spacing:normal; font-size:12.5px; margin-bottom:0}
@@ -216,6 +220,19 @@
     .tl-counter .cur{font-size:22px}
     .tl-note{font-size:14px}
   }
+  /* Bewerk-modus: veld maximaliseren, balken naar het rechtermenu (desktop) */
+  #insTop{display:flex; flex-direction:column; gap:12px; padding-bottom:14px; border-bottom:1px solid var(--line)}
+  #insTop:empty{display:none}
+  #insTop .play-name-input{font-size:20px}
+  #insTop .tl-nav{display:flex; align-items:center; justify-content:center; gap:14px}
+  #insTop .steps{flex:0 0 auto; margin:0}
+  #insTop .step-note-input{margin:0}
+  #insTop .toggle{color:var(--muted)}
+  @media (min-width:901px){
+    .mode-edit .topbar{display:none}
+    .mode-edit .timeline{display:none}
+    .mode-edit .field-wrap{padding:10px}
+  }
   /* --- Bewerkmenu (icoon-UI) --- */
   .grp{border:1px solid var(--line); border-radius:11px; padding:10px; display:flex; flex-direction:column; gap:8px}
   .gh{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); display:block}
@@ -253,6 +270,10 @@
   <symbol id="ic-tag" viewBox="0 0 24 24"><path d="M4 7h16M8 7v11M16 7v11"/></symbol>
   <symbol id="ic-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 12h10l1-12"/></symbol>
   <symbol id="ic-undo" viewBox="0 0 24 24"><path d="M9 7L4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12"/></symbol>
+  <symbol id="ic-redo" viewBox="0 0 24 24"><path d="M15 7l5 5-5 5"/><path d="M20 12H10a6 6 0 0 0 0 12"/></symbol>
+  <symbol id="ic-row" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="2.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-col" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="2.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-even" viewBox="0 0 24 24"><path d="M4 5v14M20 5v14"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/></symbol>
 </defs></svg>
 <div class="app">
   <aside class="sidebar" id="sidebar">
@@ -300,6 +321,7 @@
       <div class="signal-wrap" id="signalWrap"><img id="signalImg" alt=""></div>
 
       <aside class="inspector" id="inspector" style="display:none">
+        <div id="insTop"></div>
         <div class="grp">
           <div class="row">
             <div style="flex:1"><span class="gh fh">Play</span>
@@ -321,8 +343,18 @@
 
         <div class="actionbar">
           <button class="ib sq tool" data-tool="move" title="Verplaatsen / selecteren op het veld"><svg class="ic"><use href="#ic-hand"/></svg></button>
-          <button class="ib sq" id="undoBtn" title="Laatste actie ongedaan maken" disabled><svg class="ic"><use href="#ic-undo"/></svg></button>
+          <button class="ib sq" id="undoBtn" title="Ongedaan maken" disabled><svg class="ic"><use href="#ic-undo"/></svg></button>
+          <button class="ib sq" id="redoBtn" title="Opnieuw uitvoeren" disabled><svg class="ic"><use href="#ic-redo"/></svg></button>
           <button class="ib sq danger" id="delPlayer" title="Geselecteerd element verwijderen" disabled><svg class="ic"><use href="#ic-trash"/></svg></button>
+        </div>
+
+        <div class="grp">
+          <span class="gh">Uitlijnen <span style="font-weight:600; text-transform:none; letter-spacing:0; color:var(--muted-2)">(meerdere selecteren met Shift)</span></span>
+          <div class="actionbar">
+            <button class="ib sq" id="alignRow" title="Op één rij zetten" disabled><svg class="ic"><use href="#ic-row"/></svg></button>
+            <button class="ib sq" id="alignCol" title="Op één kolom zetten" disabled><svg class="ic"><use href="#ic-col"/></svg></button>
+            <button class="ib sq" id="alignEven" title="Gelijk verdelen" disabled><svg class="ic"><use href="#ic-even"/></svg></button>
+          </div>
         </div>
 
         <div class="grp">
@@ -502,7 +534,16 @@ function syncHash(){ try{ const nh=buildHash(); if(location.hash!==nh && window.
 let mode = "view";
 function defShown(){ return curPlayObj().showDef!==false; }
 let showLines = true;
-let selected = null;
+let selection = [];       // bron van waarheid: meerdere geselecteerde items {side,id}
+let selected = null;      // afgeleid: enkel ingevuld als er precies 1 geselecteerd is (voor losse editors)
+function selIncludes(side,id){ return selection.some(s=>s.side===side&&s.id===id); }
+function _syncSel(){ selected = selection.length===1 ? selection[0] : null; }
+function setSelection(arr){ selection = (arr||[]).slice(); _syncSel(); }
+function clearSelection(){ selection = []; selected = null; }
+function toggleSel(item){ const i=selection.findIndex(s=>s.side===item.side&&s.id===item.id); if(i>=0) selection.splice(i,1); else selection.push(item); _syncSel(); }
+const MOVER_SIDES=['offense','defense','disc','label'];
+function moverSel(){ return selection.filter(s=>MOVER_SIDES.includes(s.side)); }
+function elemRef(st,side,id){ if(side==='disc') return st.disc; if(side==='label') return (st.labels||[]).find(p=>p.id===id); const arr=side==='offense'?st.offense:st.defense; return (arr||[]).find(p=>p.id===id); }
 let playing = false, animRAF = null;
 let history = [];
 
@@ -532,7 +573,13 @@ function drawField(){
     pat.appendChild(el('line',{x1:0,y1:12,x2:12,y2:0,stroke:hc,'stroke-width':3}));
     defs.appendChild(pat);
   });
-  for(const [id,color] of [['ahO','#6ea0ff'],['ahD','#ff8b84'],['ahDisc','#f5b301'],['adRed','#ef4444'],['adBlue','#3d7bed'],['adYel','#f5b301']]){
+  // Bewegingslijn-pijlen (ah*): vaste kleine grootte (optie 2 = 10px). Teken-pijlen (ad*): zoals voorheen.
+  for(const [id,color] of [['ahO','#6ea0ff'],['ahD','#ff8b84'],['ahDisc','#f5b301']]){
+    const m=el('marker',{id,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:10,markerHeight:10,markerUnits:'userSpaceOnUse',orient:'auto-start-reverse'});
+    m.appendChild(el('path',{d:'M0,0 L10,5 L0,10 z',fill:color}));
+    defs.appendChild(m);
+  }
+  for(const [id,color] of [['adRed','#ef4444'],['adBlue','#3d7bed'],['adYel','#f5b301']]){
     const m=el('marker',{id,viewBox:'0 0 10 10',refX:8,refY:5,markerWidth:6.5,markerHeight:6.5,orient:'auto-start-reverse'});
     m.appendChild(el('path',{d:'M0,0 L10,5 L0,10 z',fill:color}));
     defs.appendChild(m);
@@ -550,6 +597,7 @@ function drawField(){
   svg.appendChild(el('g',{id:'annot'}));
   svg.appendChild(el('g',{id:'arrows'}));
   svg.appendChild(el('g',{id:'layer'}));
+  svg.appendChild(el('g',{id:'bends'}));
 }
 
 /* Endzone per play: 'bottom' (eigen endzone, start na de pull) | 'top' | 'top-large' (2/5) */
@@ -571,9 +619,29 @@ function drawEndzone(){
 
 function frameAt(i){ const s=curPlayObj().steps[i]; return {disc:{...s.disc}, offense:s.offense.map(p=>({...p})), defense:s.defense.map(p=>({...p})), labels:(s.labels||[]).map(l=>({...l}))}; }
 
+/* Buiging van een traject: 'bend' (genormaliseerde offset t.o.v. het midden van de rechte lijn)
+   wordt bewaard op het element van de BEGINSTAP. Zonder bend is de lijn recht. */
+function bendOf(p){ return (p&&p.bend&&(p.bend.x||p.bend.y)) ? p.bend : null; }
+function ctrlPt(a,b,bend){ const bx=bend?bend.x:0, by=bend?bend.y:0; return {x:(a.x+b.x)/2+2*bx, y:(a.y+b.y)/2+2*by}; }
+function bezAt(a,b,bend,t){ const c=ctrlPt(a,b,bend), u=1-t;
+  return {x:u*u*a.x+2*u*t*c.x+t*t*b.x, y:u*u*a.y+2*u*t*c.y+t*t*b.y}; }
+/* SVG-pad (in pixels) voor (een deel van) een traject; recht als bend ontbreekt */
+function trajPath(a,b,bend,t0,t1){
+  t0=(t0==null?0:t0); t1=(t1==null?1:t1);
+  if(!bend){ const p0=bezAt(a,b,null,t0), p1=bezAt(a,b,null,t1); return `M ${nx(p0.x)} ${ny(p0.y)} L ${nx(p1.x)} ${ny(p1.y)}`; }
+  const N=16; let d='';
+  for(let i=0;i<=N;i++){ const t=t0+(t1-t0)*i/N, p=bezAt(a,b,bend,t); d+=(i===0?'M ':'L ')+nx(p.x)+' '+ny(p.y)+' '; }
+  return d.trim();
+}
+
 function lerpFrame(a,b,t){
   const e=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
-  const mix=(pa,pb)=> pa&&pb?{...pb,x:pa.x+(pb.x-pa.x)*e,y:pa.y+(pb.y-pa.y)*e}:(pb||pa);
+  const mix=(pa,pb)=>{
+    if(!(pa&&pb)) return pb||pa;
+    const bend=bendOf(pa);
+    if(bend){ const p=bezAt(pa,pb,bend,e); return {...pb,x:p.x,y:p.y}; }
+    return {...pb,x:pa.x+(pb.x-pa.x)*e,y:pa.y+(pb.y-pa.y)*e};
+  };
   const byId=arr=>Object.fromEntries(arr.map(p=>[p.id,p]));
   const merge=(A,B)=> Object.keys(B).map(id=>mix(A[id],B[id]));
   return { disc:mix({...a.disc,id:'disc'},{...b.disc,id:'disc'}),
@@ -582,19 +650,40 @@ function lerpFrame(a,b,t){
            labels:merge(byId(a.labels||[]),byId(b.labels||[])) };
 }
 
+const ARR_COL={offense:'rgba(110,160,255,.95)',defense:'rgba(255,120,110,.92)',disc:'var(--frisbee)'};
+const ARR_MK={offense:'url(#ahO)',defense:'url(#ahD)',disc:'url(#ahDisc)'};
 function renderArrows(){
   const g=document.getElementById('arrows'); g.innerHTML='';
+  const bg=document.getElementById('bends'); if(bg) bg.innerHTML='';
   const steps=curPlayObj().steps;
-  if(!showLines || playing || curStep>=steps.length-1) return;
-  const cur=frameAt(curStep), nxt=frameAt(curStep+1);
+  if(!showLines || playing) return;
+  const editing=(mode==='edit');
   const byId=arr=>Object.fromEntries(arr.map(p=>[p.id,p]));
-  const cut=(a,b,color,marker)=>{ if(Math.hypot(b.x-a.x,b.y-a.y)<0.02) return;
-    g.appendChild(el('line',{x1:nx(a.x),y1:ny(a.y),x2:nx(b.x),y2:ny(b.y),stroke:color,'stroke-width':2.4,'stroke-dasharray':'1 6','stroke-linecap':'round','marker-end':marker})); };
-  const co=byId(cur.offense),no=byId(nxt.offense);
-  for(const id in co) if(no[id]) cut(co[id],no[id],'rgba(110,160,255,.95)','url(#ahO)');
-  if(defShown()){ const cd=byId(cur.defense),nd=byId(nxt.defense); for(const id in cd) if(nd[id]) cut(cd[id],nd[id],'rgba(255,120,110,.92)','url(#ahD)'); }
-  if(cur.disc&&nxt.disc&&Math.hypot(nxt.disc.x-cur.disc.x,nxt.disc.y-cur.disc.y)>0.02)
-    g.appendChild(el('line',{x1:nx(cur.disc.x),y1:ny(cur.disc.y),x2:nx(nxt.disc.x),y2:ny(nxt.disc.y),stroke:'var(--frisbee)','stroke-width':2.4,'stroke-dasharray':'1 6','stroke-linecap':'round','marker-end':'url(#ahDisc)'}));
+  const moved=(a,b)=>Math.hypot(b.x-a.x,b.y-a.y)>0.02;
+  // teken één traject-segment + (in bewerk-modus) de sleepbol op het midden
+  const seg=(a,b,side,id,startStep)=>{
+    if(!a||!b||!moved(a,b)) return;
+    const bend=bendOf(a);
+    g.appendChild(el('path',{d:trajPath(a,b,bend),fill:'none',stroke:ARR_COL[side],'stroke-width':1.9,'stroke-dasharray':'1 6','stroke-linecap':'round','marker-end':ARR_MK[side]}));
+    if(editing && bg){ const m=bezAt(a,b,bend,0.5);
+      bg.appendChild(el('circle',{class:'bend-handle','data-side':side,'data-id':id,'data-start':startStep,cx:nx(m.x),cy:ny(m.y),r:7,fill:'#fff',stroke:'var(--accent)','stroke-width':2.5,filter:'url(#lblsh)'})); }
+  };
+  // uitgaand traject (huidige stap -> volgende) — ook in kijk-modus
+  if(curStep<steps.length-1){
+    const cur=frameAt(curStep), nxt=frameAt(curStep+1);
+    const co=byId(cur.offense),no=byId(nxt.offense);
+    for(const id in co) if(no[id]) seg(co[id],no[id],'offense',id,curStep);
+    if(defShown()){ const cd=byId(cur.defense),nd=byId(nxt.defense); for(const id in cd) if(nd[id]) seg(cd[id],nd[id],'defense',id,curStep); }
+    seg({...cur.disc,id:'disc'},{...nxt.disc,id:'disc'},'disc','disc',curStep);
+  }
+  // inkomend traject (vorige stap -> huidige) — enkel in bewerk-modus
+  if(editing && curStep>0){
+    const prv=frameAt(curStep-1), cur=frameAt(curStep);
+    const po=byId(prv.offense),co=byId(cur.offense);
+    for(const id in po) if(co[id]) seg(po[id],co[id],'offense',id,curStep-1);
+    if(defShown()){ const pd=byId(prv.defense),cd=byId(cur.defense); for(const id in pd) if(cd[id]) seg(pd[id],cd[id],'defense',id,curStep-1); }
+    seg({...prv.disc,id:'disc'},{...cur.disc,id:'disc'},'disc','disc',curStep-1);
+  }
 }
 
 /* Handgetekende looplijnen (annotaties per stap) */
@@ -610,7 +699,7 @@ function renderLines(preview, stepOverride){
   const draw=(ln,isPreview)=>{
     const col=LINE_COLORS[ln.color]||'#f5b301';
     const op=(ln.opacity==null?1:ln.opacity);
-    const sel=!isPreview && !animating && selected && selected.side==='line' && selected.id===ln.id;
+    const sel=!isPreview && !animating && selIncludes('line',ln.id);
     const grp=el('g', isPreview?{}:{class:'annot-item','data-annotid':ln.id});
     if(ln.type==='area'){
       const x=Math.min(ln.x1,ln.x2), y=Math.min(ln.y1,ln.y2), w=Math.abs(ln.x2-ln.x1), hh=Math.abs(ln.y2-ln.y1);
@@ -676,7 +765,7 @@ function renderTextBox(l,sel,layer){
 function renderFrame(fr){
   const layer=document.getElementById('layer'); layer.innerHTML='';
   const drawPlayer=(p,side)=>{
-    const g=el('g',{class:'player'+(selected&&selected.side===side&&selected.id===p.id?' sel':''),'data-side':side,'data-id':p.id,transform:`translate(${nx(p.x)},${ny(p.y)})`});
+    const g=el('g',{class:'player'+(selIncludes(side,p.id)?' sel':''),'data-side':side,'data-id':p.id,transform:`translate(${nx(p.x)},${ny(p.y)})`});
     g.appendChild(el('circle',{class:'halo',r:19,fill:'none',stroke:'var(--accent)','stroke-width':2.5,opacity:0}));
     const fill = side==='offense'?'var(--o)':'var(--d)';
     const ink  = side==='offense'?'var(--o-ink)':'var(--d-ink)';
@@ -689,7 +778,7 @@ function renderFrame(fr){
   fr.offense.forEach(p=>drawPlayer(p,'offense'));
   if(defShown()) fr.defense.forEach(p=>drawPlayer(p,'defense'));
   if(fr.disc){
-    const d=el('g',{class:'player','data-side':'disc','data-id':'disc',transform:`translate(${nx(fr.disc.x)},${ny(fr.disc.y)})`});
+    const d=el('g',{class:'player'+(selIncludes('disc','disc')?' sel':''),'data-side':'disc','data-id':'disc',transform:`translate(${nx(fr.disc.x)},${ny(fr.disc.y)})`});
     d.appendChild(el('circle',{class:'halo',r:19,fill:'none',stroke:'var(--accent)','stroke-width':2.5,opacity:0}));
     d.appendChild(el('circle',{r:13.5,fill:'var(--disc)',stroke:'#b9c2cc','stroke-width':1.5}));
     d.appendChild(el('circle',{r:8.5,fill:'none',stroke:'#c7ced6','stroke-width':1.4}));
@@ -697,7 +786,7 @@ function renderFrame(fr){
     layer.appendChild(d);
   }
   (fr.labels||[]).forEach(l=>{
-    const sel = selected && selected.side==='label' && selected.id===l.id;
+    const sel = selIncludes('label',l.id);
     if(l.type==='text'){ renderTextBox(l,sel,layer); return; }
     const g=el('g',{class:'player label','data-side':'label','data-id':l.id,transform:`translate(${nx(l.x)},${ny(l.y)})`});
     const sz=l.size||13;
@@ -711,6 +800,36 @@ function renderFrame(fr){
   });
 }
 
+/* Bewerk-modus layout: verplaats titel, stap-navigatie, stappen en notitie naar
+   het rechtermenu zodat het veld de volledige hoogte krijgt (enkel op desktop). */
+let _relocNodes=null, _layoutIsEdit=null;
+function initRelocate(){
+  _relocNodes=[];
+  ['modeSeg','titleInput','steps','stepNote'].forEach(id=>{ const n=document.getElementById(id); if(n) _relocNodes.push({node:n,parent:n.parentNode,next:n.nextSibling}); });
+  const lab=document.getElementById('linesToggle'); const tgl=lab&&lab.closest('.toggle'); if(tgl) _relocNodes.push({node:tgl,parent:tgl.parentNode,next:tgl.nextSibling});
+  const nav=document.querySelector('.tl-nav'); if(nav) _relocNodes.push({node:nav,parent:nav.parentNode,next:nav.nextSibling});
+}
+function layoutForMode(){
+  if(!_relocNodes) initRelocate();
+  const desktop=window.matchMedia('(min-width:901px)').matches;
+  const wantEdit = desktop && adminUnlocked && section!=='signals' && mode==='edit';
+  if(wantEdit===_layoutIsEdit) return;
+  const insTop=document.getElementById('insTop');
+  if(wantEdit){
+    [ document.getElementById('titleInput'),
+      document.getElementById('modeSeg'),
+      document.querySelector('.tl-nav'),
+      document.getElementById('steps'),
+      document.getElementById('stepNote'),
+      document.getElementById('linesToggle').closest('.toggle')
+    ].forEach(n=>{ if(n) insTop.appendChild(n); });
+  } else {
+    for(let i=_relocNodes.length-1;i>=0;i--){ const r=_relocNodes[i]; const ref=(r.next&&r.next.parentNode===r.parent)?r.next:null; r.parent.insertBefore(r.node,ref); }
+  }
+  _layoutIsEdit=wantEdit;
+}
+window.addEventListener('resize',layoutForMode);
+
 function render(){
   renderSidebar();
   const app=document.querySelector('.app');
@@ -722,6 +841,7 @@ function render(){
   app.classList.toggle('section-signals', section==='signals');
   app.classList.toggle('mode-view', section==='signals' ? true : mode==='view');
   app.classList.toggle('mode-edit', section==='signals' ? false : mode==='edit');
+  layoutForMode();
   if(section==='signals'){ renderSignalsView(); return; }
 
   const play=curPlayObj();
@@ -736,11 +856,16 @@ function render(){
   document.getElementById('tlNote').style.display=mode==='edit'?'none':'block';
   document.getElementById('toolsBtn').classList.toggle('show',mode==='edit');
   svg.classList.toggle('editing',mode==='edit');
+  // Kijk-modus: donkergroene rand rond het veld 30% smaller (viewBox bijsnijden, coördinaten blijven gelijk)
+  if(mode==='edit'){ svg.setAttribute('viewBox','0 0 '+VB+' '+VH); }
+  else { const t=0.30, rM=VB-MX-FW; svg.setAttribute('viewBox', (MX*t)+' '+(MTop*t)+' '+(VB-(MX+rM)*t)+' '+(VH-(MTop+MBot)*t)); }
   document.getElementById('catSelect').value=play.category;
   document.getElementById('ezSelect').value=play.endzone||'bottom';
   drawEndzone();
   document.getElementById('descInput').value=play.description||'';
-  document.getElementById('delPlayer').disabled=!selected;
+  document.getElementById('delPlayer').disabled=selection.length===0;
+  { const nAlign = moverSel().length;
+    ['alignRow','alignCol','alignEven'].forEach(id=>{ const b=document.getElementById(id); if(b) b.disabled = nAlign<2; }); }
   { const isLbl = selected && selected.side==='label';
     document.getElementById('labelEdit').style.display = isLbl ? 'block' : 'none';
     if(isLbl){ const lbl=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===selected.id);
@@ -754,6 +879,7 @@ function render(){
     document.getElementById('opacityLbl').textContent = isLine ? 'Zichtbaarheid selectie' : 'Zichtbaarheid nieuwe tekening';
     if(isLine){ const it=(curPlayObj().steps[curStep].lines||[]).find(l=>l.id===selected.id); document.getElementById('lineOpacity').value = it ? (it.opacity==null?1:it.opacity) : 1; } else { document.getElementById('lineOpacity').value = drawOpacity; } }
   document.getElementById('undoBtn').disabled=history.length===0;
+  document.getElementById('redoBtn').disabled=redoStack.length===0;
   updateNavButtons();
   document.getElementById('defToggle').checked=defShown();
   document.getElementById('linesToggle').checked=showLines;
@@ -762,7 +888,7 @@ function render(){
   play.steps.forEach((s,i)=>{
     const c=document.createElement('button');
     c.className='step-chip'+(i===curStep?' active':''); c.textContent=i+1;
-    c.onclick=()=>{ curStep=i; selected=null; stopPlay(); render(); };
+    c.onclick=()=>{ curStep=i; clearSelection(); stopPlay(); render(); };
     steps.appendChild(c);
   });
   if(mode==='edit'){
@@ -792,7 +918,7 @@ function renderSidebar(){
     const b=document.createElement('button');
     b.className='play-item'+(section==='plays'&&i===curPlay?' active':'');
     b.innerHTML='<div class="nm"><span class="tag '+tagClass[p.category]+'">'+tagText[p.category]+'</span>'+escapeHtml(p.name)+'</div><div class="meta">'+p.steps.length+' stap'+(p.steps.length>1?'pen':'')+'</div>';
-    b.onclick=()=>{ section='plays'; curPlay=i; curStep=0; selected=null; stopPlay(); render(); closeMobilePanels(); };
+    b.onclick=()=>{ section='plays'; curPlay=i; curStep=0; clearSelection(); stopPlay(); render(); closeMobilePanels(); };
     if(adminUnlocked){
       b.draggable=true;
       b.addEventListener('dragstart',e=>{ dragFrom=i; b.classList.add('dragging-item'); e.dataTransfer.effectAllowed='move'; });
@@ -832,23 +958,30 @@ function goNext(){ if(section==='signals') nextSignal(); else nextStep(); }
 function goPrev(){ if(section==='signals') prevSignal(); else prevStep(); }
 
 /* History / undo */
-function snapshot(){ history.push(JSON.stringify({plays,curPlay,curStep})); if(history.length>60) history.shift(); document.getElementById('undoBtn').disabled=false; }
-function undo(){ if(!history.length) return; const s=JSON.parse(history.pop()); plays=s.plays; curPlay=Math.min(s.curPlay,plays.length-1); curStep=Math.min(s.curStep,plays[curPlay].steps.length-1); selected=null; stopPlay(); render(); }
+let redoStack=[];
+function snapshot(){ history.push(JSON.stringify({plays,curPlay,curStep})); if(history.length>60) history.shift(); redoStack=[]; }
+function restoreState(str){ const s=JSON.parse(str); plays=s.plays; curPlay=Math.min(s.curPlay,plays.length-1); curStep=Math.min(s.curStep,plays[curPlay].steps.length-1); clearSelection(); stopPlay(); render(); }
+function undo(){ if(!history.length) return; redoStack.push(JSON.stringify({plays,curPlay,curStep})); restoreState(history.pop()); }
+function redo(){ if(!redoStack.length) return; history.push(JSON.stringify({plays,curPlay,curStep})); restoreState(redoStack.pop()); }
+function copySel(){ if(!selected) return; const st=curPlayObj().steps[curStep]; if(selected.side==='label'){ const it=(st.labels||[]).find(p=>p.id===selected.id); if(it){ clipboard={kind:'label',data:JSON.parse(JSON.stringify(it))}; toast('Naam gekopieerd'); } } else if(selected.side==='line'){ const it=(st.lines||[]).find(p=>p.id===selected.id); if(it){ clipboard={kind:'line',data:JSON.parse(JSON.stringify(it))}; toast('Tekening gekopieerd'); } } }
+function pasteClip(){ if(!clipboard) return; snapshot(); const st=curPlayObj().steps[curStep]; const d=JSON.parse(JSON.stringify(clipboard.data)); const cl=v=>Math.max(0,Math.min(1,v)); const off=0; if(clipboard.kind==='label'){ d.id='l'+uid(); d.x=cl((d.x||.5)+off); d.y=cl((d.y||.5)+off); if(!st.labels) st.labels=[]; st.labels.push(d); setSelection([{side:'label',id:d.id}]); } else { d.id='ln'+uid(); d.x1=cl(d.x1+off); d.y1=cl(d.y1+off); d.x2=cl(d.x2+off); d.y2=cl(d.y2+off); if(!st.lines) st.lines=[]; st.lines.push(d); setSelection([{side:'line',id:d.id}]); } render(); toast('Geplakt'); }
 
 /* Animatie: één actie vooruit of achteruit (2x trager) */
 const PER_SEG=1440;
 let animTarget=null;
-function drawMovingLines(interp, to){
+function drawMovingLines(from, to, t){
   const g=document.getElementById('arrows'); g.innerHTML='';
+  const bg=document.getElementById('bends'); if(bg) bg.innerHTML='';
   if(!showLines) return;
+  const e=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;  // zelfde easing als de beweging
   const byId=arr=>Object.fromEntries(arr.map(p=>[p.id,p]));
-  const cut=(a,b,color,marker)=>{ if(Math.hypot(b.x-a.x,b.y-a.y)<0.01) return;
-    g.appendChild(el('line',{x1:nx(a.x),y1:ny(a.y),x2:nx(b.x),y2:ny(b.y),stroke:color,'stroke-width':2.4,'stroke-dasharray':'1 6','stroke-linecap':'round','marker-end':marker})); };
-  const oNow=byId(interp.offense), oEnd=byId(to.offense);
-  for(const id in oNow) if(oEnd[id]) cut(oNow[id],oEnd[id],'rgba(110,160,255,.95)','url(#ahO)');
-  if(defShown()){ const dNow=byId(interp.defense), dEnd=byId(to.defense); for(const id in dNow) if(dEnd[id]) cut(dNow[id],dEnd[id],'rgba(255,120,110,.92)','url(#ahD)'); }
-  if(interp.disc&&to.disc&&Math.hypot(to.disc.x-interp.disc.x,to.disc.y-interp.disc.y)>0.01)
-    g.appendChild(el('line',{x1:nx(interp.disc.x),y1:ny(interp.disc.y),x2:nx(to.disc.x),y2:ny(to.disc.y),stroke:'var(--frisbee)','stroke-width':2.4,'stroke-dasharray':'1 6','stroke-linecap':'round','marker-end':'url(#ahDisc)'}));
+  // teken het resterende stuk van het traject (van de huidige positie tot het einde), langs de buiging
+  const rem=(a,b,side)=>{ if(!a||!b||Math.hypot(b.x-a.x,b.y-a.y)<0.01) return;
+    g.appendChild(el('path',{d:trajPath(a,b,bendOf(a),e,1),fill:'none',stroke:ARR_COL[side],'stroke-width':1.9,'stroke-dasharray':'1 6','stroke-linecap':'round','marker-end':ARR_MK[side]})); };
+  const oFrom=byId(from.offense), oEnd=byId(to.offense);
+  for(const id in oFrom) if(oEnd[id]) rem(oFrom[id],oEnd[id],'offense');
+  if(defShown()){ const dFrom=byId(from.defense), dEnd=byId(to.defense); for(const id in dFrom) if(dEnd[id]) rem(dFrom[id],dEnd[id],'defense'); }
+  rem({...from.disc,id:'disc'},{...to.disc,id:'disc'},'disc');
 }
 function maxDisp(a,b){
   const byId=arr=>Object.fromEntries((arr||[]).map(p=>[p.id,p]));
@@ -879,7 +1012,7 @@ function animateTo(target){
     const t=Math.min((ts-start)/PER_SEG,1);
     const interp=lerpFrame(from,to,t);
     renderFrame(interp);
-    drawMovingLines(interp,to);
+    drawMovingLines(from,to,t);
     if(t>=1){ playing=false; curStep=target; animTarget=null; render(); return; }
     animRAF=requestAnimationFrame(tick);
   }
@@ -907,56 +1040,88 @@ function updateStepInfo(idx){
 }
 
 /* Drag & tekenen */
-let drag=null, pendingSnap=false, annotDrag=null, resizeDrag=null, textResize=null;
+let drag=null, pendingSnap=false, annotDrag=null, resizeDrag=null, textResize=null, bendDrag=null;
 let tool='move', drawColor='blue', drawOpacity=1, drawing=null;
+let clipboard=null;
 function clientToNorm(e){ const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; const l=pt.matrixTransform(svg.getScreenCTM().inverse()); let {x,y}=inv(l.x,l.y); return {x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y))}; }
 svg.addEventListener('pointerdown',e=>{
   if(mode!=='edit') return;
   e.preventDefault();
   if(tool==='move'){
+    const bh=e.target.closest('.bend-handle');
+    if(bh){
+      bendDrag={side:bh.dataset.side, id:bh.dataset.id, start:+bh.dataset.start};
+      pendingSnap=true; svg.setPointerCapture(e.pointerId);
+      return;
+    }
     const hb=e.target.closest('.annot-handle');
     if(hb){
       const grp=hb.closest('.annot-item'); const id=grp&&grp.dataset.annotid; const corner=hb.dataset.handle;
       const item=(curPlayObj().steps[curStep].lines||[]).find(l=>l.id===id);
-      if(item){ selected={side:'line',id}; resizeDrag={id,corner,orig:{left:Math.min(item.x1,item.x2),right:Math.max(item.x1,item.x2),top:Math.min(item.y1,item.y2),bottom:Math.max(item.y1,item.y2)}}; pendingSnap=true; svg.setPointerCapture(e.pointerId); }
+      if(item){ setSelection([{side:'line',id}]); resizeDrag={id,corner,orig:{left:Math.min(item.x1,item.x2),right:Math.max(item.x1,item.x2),top:Math.min(item.y1,item.y2),bottom:Math.max(item.y1,item.y2)}}; pendingSnap=true; svg.setPointerCapture(e.pointerId); }
       return;
     }
     const lh=e.target.closest('.lbl-handle');
     if(lh){
       const grp=lh.closest('[data-id]'); const id=grp&&grp.dataset.id; const corner=lh.dataset.handle;
       const item=(curPlayObj().steps[curStep].labels||[]).find(l=>l.id===id);
-      if(item){ selected={side:'label',id}; textResize={id,corner}; pendingSnap=true; svg.setPointerCapture(e.pointerId); render(); }
+      if(item){ setSelection([{side:'label',id}]); textResize={id,corner}; pendingSnap=true; svg.setPointerCapture(e.pointerId); render(); }
       return;
     }
     const pg=e.target.closest('.player');
     if(pg){
       const side=pg.dataset.side,id=pg.dataset.id;
-      if(side!=='disc') selected={side,id}; else selected=null;
-      drag={side,id,g:pg}; if(side==='label'){ const lb=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===id); if(lb&&lb.type==='text'){ const q=clientToNorm(e); drag.ox=q.x-lb.x; drag.oy=q.y-lb.y; } } pendingSnap=true; pg.classList.add('dragging'); svg.setPointerCapture(e.pointerId); render();
+      if(e.shiftKey){ toggleSel({side,id}); render(); return; }   // shift-klik = (de)selecteren, geen sleep
+      if(!selIncludes(side,id)) setSelection([{side,id}]);         // nieuw item: enkel dit selecteren
+      const movers=moverSel();
+      drag={side,id,g:pg};
+      if(movers.length>1){                                        // groep samen verplaatsen
+        const st=curPlayObj().steps[curStep]; const q=clientToNorm(e);
+        drag.group=movers.map(m=>({...m})); drag.downX=q.x; drag.downY=q.y; drag.orig={};
+        drag.group.forEach(m=>{ const r=elemRef(st,m.side,m.id); if(r) drag.orig[m.side+':'+m.id]={x:r.x,y:r.y}; });
+      } else if(side==='label'){ const lb=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===id); if(lb&&lb.type==='text'){ const q=clientToNorm(e); drag.ox=q.x-lb.x; drag.oy=q.y-lb.y; } }
+      pendingSnap=true; pg.classList.add('dragging'); svg.setPointerCapture(e.pointerId); render();
       return;
     }
     const ag=e.target.closest('.annot-item');
     if(ag){
       const id=ag.dataset.annotid;
-      selected={side:'line',id};
+      if(e.shiftKey){ toggleSel({side:'line',id}); render(); return; }
+      setSelection([{side:'line',id}]);
       const {x,y}=clientToNorm(e);
       const item=(curPlayObj().steps[curStep].lines||[]).find(l=>l.id===id);
       annotDrag={id,downX:x,downY:y,orig:item?{...item}:null};
       pendingSnap=true; svg.setPointerCapture(e.pointerId); render();
       return;
     }
-    if(selected){ selected=null; render(); }
+    if(!e.shiftKey && selection.length){ clearSelection(); render(); }
   } else {
     const {x,y}=clientToNorm(e);
     drawing={type:tool,color:drawColor,opacity:drawOpacity,x1:x,y1:y,x2:x,y2:y};
     svg.setPointerCapture(e.pointerId);
   }
 });
+function elemAt(step,side,id){ const s=curPlayObj().steps[step]; if(!s) return null; if(side==='disc') return s.disc; const arr=side==='offense'?s.offense:s.defense; return (arr||[]).find(p=>p.id===id); }
 svg.addEventListener('pointermove',e=>{
+  if(bendDrag){
+    if(pendingSnap){ snapshot(); pendingSnap=false; }
+    const {x,y}=clientToNorm(e);
+    const a=elemAt(bendDrag.start,bendDrag.side,bendDrag.id);
+    const b=elemAt(bendDrag.start+1,bendDrag.side,bendDrag.id);
+    if(a&&b){ a.bend={x:x-(a.x+b.x)/2, y:y-(a.y+b.y)/2}; renderArrows(); }
+    return;
+  }
   if(drag){
     if(pendingSnap){ snapshot(); pendingSnap=false; }
     const {x,y}=clientToNorm(e); const s=curPlayObj().steps[curStep];
-    if(drag.side==='disc'){ s.disc.x=x; s.disc.y=y; }
+    if(drag.group){
+      let dx=x-drag.downX, dy=y-drag.downY;
+      drag.group.forEach(m=>{ const o=drag.orig[m.side+':'+m.id]; if(!o) return; const r=elemRef(s,m.side,m.id);
+        const maxX=(r&&r.type==='text')?(1-(r.w||0.3)):1, maxY=(r&&r.type==='text')?(1-(r.h||0.12)):1;
+        dx=Math.max(-o.x, Math.min(dx, maxX-o.x)); dy=Math.max(-o.y, Math.min(dy, maxY-o.y)); });
+      drag.group.forEach(m=>{ const o=drag.orig[m.side+':'+m.id]; if(!o) return; const r=elemRef(s,m.side,m.id); if(r){ r.x=o.x+dx; r.y=o.y+dy; } });
+    }
+    else if(drag.side==='disc'){ s.disc.x=x; s.disc.y=y; }
     else if(drag.side==='label'){ if(!s.labels) s.labels=[]; const p=s.labels.find(p=>p.id===drag.id); if(p){ if(p.type==='text'&&drag.ox!=null){ let ax=x-drag.ox, ay=y-drag.oy; p.x=Math.max(0,Math.min(ax,1-(p.w||0.3))); p.y=Math.max(0,Math.min(ay,1-(p.h||0.12))); } else { p.x=x;p.y=y; } } }
     else { const arr=drag.side==='offense'?s.offense:s.defense; const p=arr.find(p=>p.id===drag.id); if(p){p.x=x;p.y=y;} }
     renderFrame(frameAt(curStep));
@@ -1001,9 +1166,10 @@ svg.addEventListener('pointermove',e=>{
   }
 });
 function endInteraction(){
-  if(drag){ drag.g.classList.remove('dragging'); drag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; renderArrows(); }
-  if(annotDrag){ annotDrag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; }
-  if(resizeDrag){ resizeDrag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; }
+  if(bendDrag){ bendDrag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; document.getElementById('redoBtn').disabled=redoStack.length===0; renderArrows(); }
+  if(drag){ drag.g.classList.remove('dragging'); drag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; document.getElementById('redoBtn').disabled=redoStack.length===0; renderArrows(); }
+  if(annotDrag){ annotDrag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; document.getElementById('redoBtn').disabled=redoStack.length===0; }
+  if(resizeDrag){ resizeDrag=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; document.getElementById('redoBtn').disabled=redoStack.length===0; }
   if(textResize){ textResize=null; pendingSnap=false; document.getElementById('undoBtn').disabled=history.length===0; }
   if(drawing){
     const isArea=drawing.type==='area';
@@ -1020,18 +1186,47 @@ svg.addEventListener('pointercancel',endInteraction);
 function addStep(){ snapshot(); const play=curPlayObj(); play.steps.splice(curStep+1,0,JSON.parse(JSON.stringify(play.steps[curStep]))); curStep++; stopPlay(); render(); }
 function deleteStep(){ const play=curPlayObj(); if(play.steps.length<=1){toast('Een play heeft minstens één stap.');return;} snapshot(); play.steps.splice(curStep,1); curStep=Math.max(0,curStep-1); render(); }
 function addPlayer(side){ snapshot(); const s=curPlayObj().steps[curStep]; const arr=side==='offense'?s.offense:s.defense; const id=(side==='offense'?'o':'d')+uid(); arr.push(P(id,String(arr.length+1),.5,.55)); toast(side==='offense'?'Aanvaller toegevoegd':'Verdediger toegevoegd'); render(); }
-function addLabel(){ snapshot(); const id='l'+uid(); curPlayObj().steps.forEach((s,i)=>{ if(i<curStep) return; if(!s.labels) s.labels=[]; s.labels.push({id,text:'Naam',x:.5,y:.5,size:13,bold:false,italic:false}); }); selected={side:'label',id}; render(); toast('Naam toegevoegd'); }
-function addText(){ snapshot(); const id='t'+uid(); curPlayObj().steps.forEach((s,i)=>{ if(i<curStep) return; if(!s.labels) s.labels=[]; s.labels.push({id,type:'text',text:'Tekst',x:.34,y:.44,w:.32,h:.12,size:15,bold:false,italic:false}); }); selected={side:'label',id}; tool='move'; render(); toast('Tekstvak toegevoegd'); }
-function deletePlayer(){ if(!selected) return; snapshot(); if(selected.side==='line'){ const st=curPlayObj().steps[curStep]; if(st.lines) st.lines=st.lines.filter(l=>l.id!==selected.id); selected=null; render(); return; } const k=selected.side==='offense'?'offense':selected.side==='defense'?'defense':'labels'; const s=curPlayObj().steps[curStep]; if(s && s[k]) s[k]=s[k].filter(p=>p.id!==selected.id); selected=null; render(); }
+function addLabel(){ snapshot(); const id='l'+uid(); curPlayObj().steps.forEach((s,i)=>{ if(i<curStep) return; if(!s.labels) s.labels=[]; s.labels.push({id,text:'Naam',x:.5,y:.5,size:13,bold:false,italic:false}); }); setSelection([{side:'label',id}]); render(); toast('Naam toegevoegd'); }
+function addText(){ snapshot(); const id='t'+uid(); curPlayObj().steps.forEach((s,i)=>{ if(i<curStep) return; if(!s.labels) s.labels=[]; s.labels.push({id,type:'text',text:'Tekst',x:.34,y:.44,w:.32,h:.12,size:15,bold:false,italic:false}); }); setSelection([{side:'label',id}]); tool='move'; render(); toast('Tekstvak toegevoegd'); }
+function deletePlayer(){ if(!selection.length) return; snapshot(); const st=curPlayObj().steps[curStep];
+  selection.forEach(sel=>{
+    if(sel.side==='disc') return;                       // disc kan niet verwijderd worden
+    if(sel.side==='line'){ if(st.lines) st.lines=st.lines.filter(l=>l.id!==sel.id); return; }
+    const k=sel.side==='offense'?'offense':sel.side==='defense'?'defense':'labels';
+    if(st[k]) st[k]=st[k].filter(p=>p.id!==sel.id);
+  });
+  clearSelection(); render(); }
+function alignSel(kind){
+  const movers=moverSel(); if(movers.length<2) return;
+  const st=curPlayObj().steps[curStep];
+  const els=movers.map(m=>elemRef(st,m.side,m.id)).filter(Boolean);
+  if(els.length<2) return;
+  snapshot();
+  if(kind==='row'){
+    const my=els.reduce((a,e)=>a+e.y,0)/els.length;
+    const xs=els.map(e=>e.x), min=Math.min(...xs), max=Math.max(...xs);
+    els.slice().sort((a,b)=>a.x-b.x).forEach((e,i,arr)=>{ e.y=my; e.x=min+(max-min)*i/(arr.length-1); });
+  } else if(kind==='col'){
+    const mx=els.reduce((a,e)=>a+e.x,0)/els.length;
+    const ys=els.map(e=>e.y), min=Math.min(...ys), max=Math.max(...ys);
+    els.slice().sort((a,b)=>a.y-b.y).forEach((e,i,arr)=>{ e.x=mx; e.y=min+(max-min)*i/(arr.length-1); });
+  } else { // even: gelijke tussenafstand langs de dominante as, overige coördinaat blijft
+    const xs=els.map(e=>e.x), ys=els.map(e=>e.y);
+    const axis=(Math.max(...xs)-Math.min(...xs))>=(Math.max(...ys)-Math.min(...ys))?'x':'y';
+    const vals=els.map(e=>e[axis]), min=Math.min(...vals), max=Math.max(...vals);
+    els.slice().sort((a,b)=>a[axis]-b[axis]).forEach((e,i,arr)=>{ e[axis]=min+(max-min)*i/(arr.length-1); });
+  }
+  render();
+}
 function newPlay(){ snapshot(); const p={id:uid(),name:"Nieuwe play",category:"offense",endzone:"bottom",description:"",
   steps:[{note:"",disc:{x:.40,y:.80},
     offense:[P("o1","1",.40,.80),P("o2","2",.60,.82),P("o3","3",.50,.42),P("o4","4",.50,.50),P("o5","5",.50,.58),P("o6","6",.50,.66),P("o7","7",.50,.34)],
     defense:[P("d1","1",.44,.85),P("d2","2",.56,.87),P("d3","3",.54,.42),P("d4","4",.54,.50),P("d5","5",.54,.58),P("d6","6",.54,.66),P("d7","7",.50,.28)]}]};
-  plays.push(p); curPlay=plays.length-1; curStep=0; mode='edit'; selected=null; stopPlay(); render(); document.getElementById('titleInput').focus(); }
+  plays.push(p); curPlay=plays.length-1; curStep=0; mode='edit'; clearSelection(); stopPlay(); render(); document.getElementById('titleInput').focus(); }
 function deletePlay(){ if(plays.length<=1){toast('Je playbook heeft minstens één play nodig.');return;} snapshot(); plays.splice(curPlay,1); curPlay=Math.max(0,curPlay-1); curStep=0; render(); }
 
 /* Wiring */
-document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>{ mode=b.dataset.mode; selected=null; tool='move'; drawing=null; stopPlay(); render(); });
+document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>{ mode=b.dataset.mode; clearSelection(); tool='move'; drawing=null; stopPlay(); render(); });
 document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>{ tool=b.dataset.tool; updateToolUI(); });
 document.querySelectorAll('.swatch').forEach(b=>b.onclick=()=>{ drawColor=b.dataset.color; if(selected&&selected.side==='line'){ snapshot(); const it=(curPlayObj().steps[curStep].lines||[]).find(l=>l.id===selected.id); if(it) it.color=drawColor; render(); } else { updateToolUI(); } });
 document.getElementById('nextBtn').onclick=goNext;
@@ -1039,6 +1234,7 @@ document.getElementById('prevBtn').onclick=goPrev;
 document.getElementById('linesToggle').onchange=e=>{ showLines=e.target.checked; renderArrows(); };
 document.getElementById('defToggle').onchange=e=>{ curPlayObj().showDef=e.target.checked; render(); };
 document.getElementById('undoBtn').onclick=undo;
+document.getElementById('redoBtn').onclick=redo;
 document.getElementById('titleInput').onfocus=()=>snapshot();
 document.getElementById('titleInput').oninput=e=>{ curPlayObj().name=e.target.value; document.getElementById('titleView').textContent=e.target.value; };
 document.getElementById('descInput').onfocus=()=>snapshot();
@@ -1050,8 +1246,8 @@ document.getElementById('stepNote').oninput=e=>{ curPlayObj().steps[curStep].not
 document.getElementById('addOff').onclick=()=>addPlayer('offense');
 document.getElementById('addLabel').onclick=addLabel; document.getElementById('addText').onclick=addText;
 document.getElementById('labelText').onfocus=()=>snapshot();
-document.getElementById('labelText').oninput=e=>{ if(!selected||selected.side!=='label') return; curPlayObj().steps.forEach(s=>{ const l=(s.labels||[]).find(p=>p.id===selected.id); if(l) l.text=e.target.value; }); renderFrame(frameAt(curStep)); };
-function labelProp(fn){ if(!selected||selected.side!=='label') return; snapshot(); curPlayObj().steps.forEach(s=>{ const l=(s.labels||[]).find(p=>p.id===selected.id); if(l) fn(l); }); }
+document.getElementById('labelText').oninput=e=>{ if(!selected||selected.side!=='label') return; const l=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===selected.id); if(l) l.text=e.target.value; renderFrame(frameAt(curStep)); };
+function labelProp(fn){ if(!selected||selected.side!=='label') return; snapshot(); const l=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===selected.id); if(l) fn(l); }
 document.getElementById('labelSize').onchange=e=>{ const v=parseInt(e.target.value,10); labelProp(l=>l.size=v); renderFrame(frameAt(curStep)); };
 document.getElementById('labelBold').onclick=()=>{ if(!selected||selected.side!=='label') return; const cur=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===selected.id); const nv=!(cur&&cur.bold); labelProp(l=>l.bold=nv); render(); };
 document.getElementById('labelItalic').onclick=()=>{ if(!selected||selected.side!=='label') return; const cur=(curPlayObj().steps[curStep].labels||[]).find(p=>p.id===selected.id); const nv=!(cur&&cur.italic); labelProp(l=>l.italic=nv); render(); };
@@ -1062,16 +1258,22 @@ document.getElementById('lineOpacity').onchange=()=>{ opacityDirty=false; };
 document.getElementById('tempEditBtn').onclick=()=>{ adminUnlocked=true; mode='edit'; render(); document.getElementById('tempEditBtn').style.display='none'; };
 document.getElementById('addDef').onclick=()=>addPlayer('defense');
 document.getElementById('delPlayer').onclick=deletePlayer;
+document.getElementById('alignRow').onclick=()=>alignSel('row');
+document.getElementById('alignCol').onclick=()=>alignSel('col');
+document.getElementById('alignEven').onclick=()=>alignSel('even');
 document.getElementById('delPlay').onclick=deletePlay;
 document.getElementById('newPlayBtn').onclick=newPlay;
 
 document.addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ if(mode==='edit'){ e.preventDefault(); undo(); } return; }
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ if(mode==='edit'){ e.preventDefault(); if(e.shiftKey) redo(); else undo(); } return; }
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){ if(mode==='edit'){ e.preventDefault(); redo(); } return; }
   if(/input|textarea|select/.test((e.target.tagName||'').toLowerCase())) return;
   if(e.key==='ArrowRight'){ e.preventDefault(); goNext(); }
   else if(e.key==='ArrowLeft'){ e.preventDefault(); goPrev(); }
   else if(e.key===' '){ e.preventDefault(); goNext(); }
-  else if((e.key==='Delete'||e.key==='Backspace')&&mode==='edit'&&section==='plays'){ if(selected) deletePlayer(); else deleteStep(); }
+  else if((e.key==='Delete'||e.key==='Backspace')&&mode==='edit'&&section==='plays'){ if(selection.length) deletePlayer(); else deleteStep(); }
+  else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='c'&&mode==='edit'&&section==='plays'&&selected&&(selected.side==='label'||selected.side==='line')){ e.preventDefault(); copySel(); }
+  else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='v'&&mode==='edit'&&section==='plays'&&clipboard){ e.preventDefault(); pasteClip(); }
 });
 
 /* Import / export */
@@ -1091,8 +1293,8 @@ document.getElementById('modalClose').onclick=()=>modal.classList.remove('on');
 modal.addEventListener('click',e=>{ if(e.target===modal) modal.classList.remove('on'); });
 document.getElementById('modalCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(document.getElementById('modalText').value); toast('Gekopieerd naar klembord'); }catch{ toast('Kopiëren niet toegelaten hier'); } };
 document.getElementById('modalDownload').onclick=()=>{ const b=new Blob([document.getElementById('modalText').value],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='plays.json'; a.click(); URL.revokeObjectURL(a.href); };
-document.getElementById('modalLoad').onclick=()=>{ try{ const d=JSON.parse(document.getElementById('modalText').value); if(!Array.isArray(d)||!d.length) throw new Error(); snapshot(); plays=d; curPlay=0; curStep=0; selected=null; stopPlay(); render(); modal.classList.remove('on'); toast('Playbook geladen'); }catch{ toast('Ongeldige JSON'); } };
-document.getElementById('modalMerge').onclick=()=>{ if(!importData){ toast('Niets om te importeren'); return; } const chosen=importData.filter((p,i)=>importSel[i]); if(!chosen.length){ toast('Niets geselecteerd'); return; } snapshot(); let added=0,updated=0; chosen.forEach(p=>{ if(!p.id) p.id=uid(); if(!Array.isArray(p.steps)) p.steps=[]; const idx=plays.findIndex(q=>q.id===p.id); if(idx>=0){ plays[idx]=p; updated++; } else { plays.push(p); added++; } }); curPlay=Math.max(0,Math.min(curPlay,plays.length-1)); curStep=0; selected=null; stopPlay(); render(); modal.classList.remove('on'); toast(added+' toegevoegd, '+updated+' bijgewerkt'); };
+document.getElementById('modalLoad').onclick=()=>{ try{ const d=JSON.parse(document.getElementById('modalText').value); if(!Array.isArray(d)||!d.length) throw new Error(); snapshot(); plays=d; curPlay=0; curStep=0; clearSelection(); stopPlay(); render(); modal.classList.remove('on'); toast('Playbook geladen'); }catch{ toast('Ongeldige JSON'); } };
+document.getElementById('modalMerge').onclick=()=>{ if(!importData){ toast('Niets om te importeren'); return; } const chosen=importData.filter((p,i)=>importSel[i]); if(!chosen.length){ toast('Niets geselecteerd'); return; } snapshot(); let added=0,updated=0; chosen.forEach(p=>{ if(!p.id) p.id=uid(); if(!Array.isArray(p.steps)) p.steps=[]; const idx=plays.findIndex(q=>q.id===p.id); if(idx>=0){ plays[idx]=p; updated++; } else { plays.push(p); added++; } }); curPlay=Math.max(0,Math.min(curPlay,plays.length-1)); curStep=0; clearSelection(); stopPlay(); render(); modal.classList.remove('on'); toast(added+' toegevoegd, '+updated+' bijgewerkt'); };
 document.getElementById('modalText').addEventListener('input',()=>{ if(modalMode==='import') parseImport(); });
 
 /* Mobile panels */
@@ -1108,7 +1310,7 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 drawField();
 parseHash(); if(!adminUnlocked) mode='view'; render();
 (async function(){ try{ const r=await fetch('plays.json',{cache:'no-store'}); if(r.ok){ const d=await r.json(); if(Array.isArray(d)&&d.length){ plays=d; parseHash(); if(!adminUnlocked) mode='view'; render(); } } }catch(e){} })();
-window.addEventListener('hashchange',()=>{ parseHash(); if(!adminUnlocked) mode='view'; selected=null; stopPlay(); render(); });
+window.addEventListener('hashchange',()=>{ parseHash(); if(!adminUnlocked) mode='view'; clearSelection(); stopPlay(); render(); });
 </script>
 </body>
 </html>
