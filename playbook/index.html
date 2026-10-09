@@ -188,8 +188,6 @@
   .modal .foot{display:flex; gap:8px; justify-content:flex-end; padding:14px 18px; border-top:1px solid var(--line)}
   .modal .hint{margin-bottom:10px}
 
-  .temp-edit{position:fixed; left:14px; bottom:14px; z-index:60; background:#1c2430; color:#fff; border:1px dashed #f5b301; border-radius:10px; padding:8px 12px; font-size:12.5px; font-weight:600; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.25)}
-  .temp-edit:hover{filter:brightness(1.12)}
   .toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--ink); color:#fff; padding:10px 16px; border-radius:10px; font-size:13px; font-weight:600; opacity:0; transition:.25s; z-index:50; pointer-events:none}
   .toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
 
@@ -433,8 +431,6 @@
     </div>
   </div>
 </div>
-<!-- TIJDELIJK: testknop om bewerkmodus te openen zonder #edit; verwijder voor publicatie -->
-<button id="tempEditBtn" class="temp-edit">⚙ Bewerken (tijdelijk)</button>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -523,13 +519,13 @@ let section='plays', sigIdx=0;
 let adminUnlocked=false;
 function parseHash(){
   const parts=location.hash.replace(/^#/,'').split('&').filter(Boolean);
-  adminUnlocked = parts.includes('edit');
+  adminUnlocked = parts.includes('bewerken') || parts.includes('edit');
   let pl=null, sig=false;
   parts.forEach(t=>{ if(t==='signals') sig=true; const m=t.match(/^play=(\d+)$/); if(m) pl=parseInt(m[1],10); });
   if(sig){ section='signals'; }
   else if(pl!==null){ section='plays'; curPlay=Math.max(0,Math.min(plays.length-1,pl-1)); curStep=0; }
 }
-function buildHash(){ const p=[]; if(adminUnlocked) p.push('edit'); if(section==='signals') p.push('signals'); else p.push('play='+(curPlay+1)); return '#'+p.join('&'); }
+function buildHash(){ const p=[]; if(adminUnlocked) p.push('bewerken'); if(section==='signals') p.push('signals'); else p.push('play='+(curPlay+1)); return '#'+p.join('&'); }
 function syncHash(){ try{ const nh=buildHash(); if(location.hash!==nh && window.history && history.replaceState) history.replaceState(null,'',nh); }catch(e){} }
 let mode = "view";
 function defShown(){ return curPlayObj().showDef!==false; }
@@ -1255,7 +1251,6 @@ let opacityDirty=false;
 document.getElementById('lineOpacity').oninput=e=>{ const v=parseFloat(e.target.value); if(selected&&selected.side==='line'){ if(!opacityDirty){ snapshot(); opacityDirty=true; } const it=(curPlayObj().steps[curStep].lines||[]).find(l=>l.id===selected.id); if(it){ it.opacity=v; renderLines(); } } else { drawOpacity=v; } };
 document.getElementById('lineOpacity').onchange=()=>{ opacityDirty=false; };
 /* TIJDELIJK: verwijder dit blok voor publicatie */
-document.getElementById('tempEditBtn').onclick=()=>{ adminUnlocked=true; mode='edit'; render(); document.getElementById('tempEditBtn').style.display='none'; };
 document.getElementById('addDef').onclick=()=>addPlayer('defense');
 document.getElementById('delPlayer').onclick=deletePlayer;
 document.getElementById('alignRow').onclick=()=>alignSel('row');
