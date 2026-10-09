@@ -1,13 +1,13 @@
 [
   {
     "id": "ofs28r4",
-    "name": "CLAM Posities",
+    "name": "CLAM Defense",
     "category": "defense",
     "endzone": "bottom",
     "description": "",
     "steps": [
       {
-        "note": "Clam posities",
+        "note": "",
         "disc": {
           "x": 0.5798143401859314,
           "y": 0.7795020114170031
@@ -240,7 +240,7 @@
         ]
       },
       {
-        "note": "De CLAM forceert de disc naar de gele zone, om de tegenstander vast te zetten aan de zijlijn.",
+        "note": "",
         "disc": {
           "x": 0.5798143401859314,
           "y": 0.7795020114170031
@@ -633,7 +633,7 @@
         ]
       },
       {
-        "note": "De swing positie schuift door en de disc wordt verder ingesloten.",
+        "note": "",
         "disc": {
           "x": 0.8970019723486713,
           "y": 0.7868148289369733,
@@ -834,7 +834,7 @@
         ]
       },
       {
-        "note": "Wanneer er toch een reset gebeurt naar achteren, laat de swing positie deze aanvaller los en focust op de nieuwe swing-optie ...",
+        "note": "",
         "disc": {
           "x": 0.8799061212014025,
           "y": 0.8957510958896594
@@ -1025,7 +1025,7 @@
         ]
       },
       {
-        "note": "... en sluit de CLAM weer aan op de nieuwe handler.",
+        "note": "",
         "disc": {
           "x": 0.8799061212014025,
           "y": 0.8957510958896594,
@@ -1220,7 +1220,7 @@
         ]
       },
       {
-        "note": "... en sluit de CLAM weer aan op de nieuwe handler.",
+        "note": "",
         "disc": {
           "x": 0.8799061212014025,
           "y": 0.8957510958896594,
@@ -1457,7 +1457,7 @@
         ]
       },
       {
-        "note": "En als we toch gebroken worden in de break-side ...",
+        "note": "",
         "disc": {
           "x": 0.22956935251791646,
           "y": 0.8453717178173279
@@ -1649,7 +1649,7 @@
         ]
       },
       {
-        "note": "Gaat de swing eerst de flow tegenhouden ...",
+        "note": "",
         "disc": {
           "x": 0.22956935251791646,
           "y": 0.8453717178173279
@@ -1841,7 +1841,7 @@
         ]
       },
       {
-        "note": "... en vervolgens plaats maken voor de clam, die zich weer opstelt om de disc terug naar de zijlijn te duwen.",
+        "note": "",
         "disc": {
           "x": 0.22956935251791646,
           "y": 0.8453717178173279

@@ -945,6 +945,7 @@ function renderSignalsView(){
   const sig=signals[sigIdx];
   const img=document.getElementById('signalImg'); img.src=sig.img; img.alt=sig.name;
   document.getElementById('tlName').textContent=sig.name;
+  { const _tt=document.getElementById('tlType'); _tt.textContent=''; _tt.className='tl-tag'; }
   const note=document.getElementById('tlNote'); note.textContent=''; note.style.display='none';
   document.getElementById('curNum').textContent=sigIdx+1;
   document.getElementById('totNum').textContent=signals.length;
