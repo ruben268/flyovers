@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flyovers Yo-Yo Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one narrow column like a coach's clipboard — hero numbers, risers, a shuttle-track ranking, then the entry form. */
+:root{
+  --bg:#F1F4F2; --surface:#FFFFFF; --fg:#13201B; --muted:#5B6A64; --line:#D7DFDB;
+  --accent:#C04D32; --accent-soft:#F6E2DC; --mid:#6F8A80; --old:#A9BBB4; --good:#2F7D55;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1513; --surface:#17201C; --fg:#E8EEEB; --muted:#93A39C; --line:#2A3631;
+  --accent:#E2694C; --accent-soft:#3A221B; --mid:#8DA89D; --old:#4E625A; --good:#5FC08C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1513; --surface:#17201C; --fg:#E8EEEB; --muted:#93A39C; --line:#2A3631;
+  --accent:#E2694C; --accent-soft:#3A221B; --mid:#8DA89D; --old:#4E625A; --good:#5FC08C; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.5;font-variant-numeric:tabular-nums}
+.wrap{max-width:860px;margin:0 auto;padding-inline:20px;padding-block:20px 64px;display:flex;flex-direction:column;gap:44px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1}
+h2{font-size:clamp(1.7rem,4vw,2.2rem);font-weight:700;text-transform:uppercase;letter-spacing:.01em}
+p{margin:0}
+.eyebrow{font-size:.75rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* top bar */
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.mark{font-family:var(--display);font-style:italic;font-weight:800;font-size:1.6rem;color:var(--accent);letter-spacing:.02em}
+
+/* hero */
+.hero{display:flex;flex-direction:column;gap:22px}
+.hero h1{font-size:clamp(3rem,10vw,5.6rem);font-weight:800;font-style:italic;text-transform:uppercase;letter-spacing:-.01em}
+.hero h1 span{color:var(--accent)}
+.lede{max-width:60ch;font-size:1.08rem;color:var(--muted)}
+.shuttle{display:flex;gap:4px;align-items:center;height:14px}
+.shuttle i{flex:1;height:4px;background:var(--line);border-radius:2px;transform-origin:left}
+.shuttle i.on{background:var(--accent)}
+@media (prefers-reduced-motion:no-preference){
+  .shuttle i.on{animation:run 1.2s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes run{from{transform:scaleX(.15);opacity:.4}to{transform:none;opacity:1}}
+}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.stat{background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.stat b{font-family:var(--display);font-weight:700;font-size:2.4rem;line-height:1}
+.stat b.hot{color:var(--accent)}
+.stat small{color:var(--muted);font-size:.85rem;line-height:1.35}
+
+.cta{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:var(--accent);color:#fff;border-radius:14px;padding:18px 20px}
+.cta strong{font-family:var(--display);font-size:1.6rem;font-weight:700;text-transform:uppercase;display:block;line-height:1.05}
+.cta p{opacity:.9}
+.btn{appearance:none;border:0;border-radius:999px;padding:11px 20px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-light{background:#fff;color:#7a2a17}
+.btn-accent{background:var(--accent);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+
+/* risers */
+.sect{display:flex;flex-direction:column;gap:16px}
+.sect-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.risers{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.riser{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.riser .rank{font-family:var(--display);font-weight:700;color:var(--muted);font-size:.95rem;letter-spacing:.05em}
+.riser .who{font-weight:700;font-size:1.15rem}
+.riser .gain{font-family:var(--display);font-style:italic;font-weight:800;font-size:2.6rem;color:var(--accent);line-height:1}
+.riser .path{color:var(--muted);font-size:.9rem}
+.riser:first-child{border-color:var(--accent);background:var(--accent-soft)}
+
+/* ranking */
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block;flex:none}
+.d0{background:var(--surface);border:2px solid var(--old)}
+.d1{background:var(--mid)}
+.d2{background:var(--accent)}
+.board{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px 0}
+.axis,.row{display:grid;grid-template-columns:8.5rem minmax(0,1fr) 5.5rem;align-items:center;gap:12px;padding:0 16px}
+.axis{height:30px;font-size:.72rem;color:var(--muted);font-weight:600;letter-spacing:.06em}
+.row{min-height:44px;border-top:1px solid var(--line)}
+.row.me{background:var(--accent-soft)}
+.name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px;min-width:0}
+.name .pos{color:var(--muted);font-size:.8rem;width:1.6em;flex:none;text-align:right}
+.chip{font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:4px;padding:1px 5px;flex:none}
+.chip.pr{background:var(--accent);color:#fff}
+.chip.new{border:1px solid var(--mid);color:var(--mid)}
+.track{position:relative;height:28px}
+.track .tick{position:absolute;top:2px;bottom:2px;width:1px;background:var(--line)}
+.axis .track .lab{position:absolute;top:50%;transform:translate(-50%,-50%)}
+.track .seg{position:absolute;top:50%;height:3px;margin-top:-1.5px;background:var(--old);border-radius:2px}
+.track .seg.up{background:var(--accent);opacity:.55}
+.track .m{position:absolute;top:50%;transform:translate(-50%,-50%);z-index:1}
+.track .m.d2{width:14px;height:14px;z-index:2;box-shadow:0 0 0 2px var(--surface)}
+.val{text-align:right;line-height:1.15}
+.val b{font-family:var(--display);font-size:1.25rem;font-weight:700}
+.val small{display:block;font-size:.78rem;color:var(--muted)}
+.val small.up{color:var(--good);font-weight:600}
+.empty{padding:28px 18px;text-align:center;color:var(--muted)}
+@media (max-width:560px){
+  .axis,.row{grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:6px 14px}
+  .row .track,.axis .track{grid-column:1 / -1;grid-row:2}
+  .axis .spacer{display:none}
+  .axis{height:auto;padding-top:8px}
+  .axis .track{height:18px}
+}
+
+/* form */
+.entry{background:var(--surface);border:2px solid var(--accent);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:18px}
+.entry h2{color:var(--accent)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-weight:600;font-size:.9rem}
+.field input,.field select{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:11px 12px;width:100%}
+.hint{font-size:.85rem;color:var(--muted);min-height:1.3em}
+.actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.msg{font-weight:600}
+.msg.err{color:var(--accent)}
+.done{border-radius:12px;background:var(--accent-soft);padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.done b{font-family:var(--display);font-style:italic;font-weight:800;font-size:2rem;color:var(--accent);line-height:1.05}
+.locked{color:var(--muted)}
+
+/* explainer */
+.explain{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px;font-size:.92rem;color:var(--muted);border-top:1px solid var(--line);padding-top:22px}
+.explain h3{font-size:1.1rem;text-transform:uppercase;color:var(--fg);margin-bottom:6px;font-weight:700}
+code{font-family:var(--body);font-weight:700;color:var(--fg)}
+canvas#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50}
+</style>
+</head>
+<body>
+
+<canvas id="fx" hidden></canvas>
+<div class="wrap">
+  <header class="top">
+    <span class="mark">FLYOVERS</span>
+    <span class="eyebrow">Yo-Yo Intermittent Recovery Test 1</span>
+  </header>
+
+  <section class="hero" aria-labelledby="h1">
+    <div class="shuttle" id="shuttle" aria-hidden="true"></div>
+    <h1 id="h1">Elke shuttle <span>telt.</span></h1>
+    <p class="lede" id="lede">20 meter heen, 20 meter terug, 10 seconden herstel. En dan weer, telkens een tikje sneller. Zo ver liep onze ploeg tot nu toe.</p>
+    <div class="stats" id="stats">
+      <div class="stat"><b>…</b><small>Resultaten laden</small></div>
+    </div>
+    <div class="cta" id="cta">
+      <div><strong id="ctaTitle">Volgende test</strong><p id="ctaText">Na de test vul je hier zelf je eindniveau in.</p></div>
+      <a class="btn btn-light" href="#invullen">Score invullen</a>
+    </div>
+  </section>
+
+  <section class="sect" aria-labelledby="hr">
+    <div class="sect-head"><h2 id="hr">Grootste stijgers</h2><span class="muted" id="riserNote"></span></div>
+    <div class="risers" id="risers"><p class="muted">Nog geen herhaalde tests.</p></div>
+  </section>
+
+  <section class="sect" aria-labelledby="hk">
+    <div class="sect-head"><h2 id="hk">Het klassement</h2>
+      <div class="legend" id="legend"></div>
+    </div>
+    <p class="muted">Gerangschikt op je meest recente test. De baan loopt van niveau 13 tot 20; elke streep is het begin van een nieuw snelheidsniveau.</p>
+    <div class="board" id="board"><div class="empty">De resultaten worden geladen.</div></div>
+  </section>
+
+  <section class="entry" id="invullen" aria-labelledby="hf">
+    <div><p class="eyebrow" id="formTest">Nieuwe test</p><h2 id="hf">Vul je eindniveau in</h2></div>
+    <p class="muted">Je eindniveau is het laatste niveau dat je volledig hebt uitgelopen, bijvoorbeeld <code>16.8</code>. Verkeerd ingevuld? Vul gewoon opnieuw in met dezelfde naam, dan wordt je score overschreven.</p>
+    <form id="form" novalidate>
+      <div class="fields">
+        <div class="field">
+          <label for="fName">Naam</label>
+          <input id="fName" list="names" autocomplete="off" placeholder="Bv. Luna" maxlength="40" required>
+          <datalist id="names"></datalist>
+          <span class="hint" id="nameHint"></span>
+        </div>
+        <div class="field">
+          <label for="fLevel">Eindniveau</label>
+          <select id="fLevel" required></select>
+          <span class="hint" id="levelHint"></span>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:16px">
+        <button class="btn btn-accent" id="fSubmit" type="submit">Opslaan</button>
+        <span class="msg" id="fMsg" role="status"></span>
+      </div>
+    </form>
+    <div class="done" id="done" hidden></div>
+    <p class="locked" id="locked" hidden>Met jouw toegang kan je deze pagina bekijken, maar geen scores opslaan. Geef je eindniveau door aan Ruben, dan zet hij het erbij.</p>
+  </section>
+
+  <section class="explain" aria-label="Uitleg">
+    <div><h3>Wat betekent 16.8?</h3><p>Het getal voor de punt is het snelheidsniveau, het getal erna de shuttle binnen dat niveau. Elke shuttle is 2 × 20 m, dus 40 m. Niveau 16.8 = 1.400 m.</p></div>
+    <div><h3>Hoe snel gaat het?</h3><p>Niveau 14 loop je aan 14,5 km/u, niveau 17 aan 16 km/u en niveau 20 al aan 17,5 km/u. Vanaf niveau 14 telt elk niveau 8 shuttles.</p></div>
+    <div><h3>Geschatte VO₂max</h3><p>Volgens Bangsbo e.a. (2008): afstand × 0,0084 + 36,4 ml/kg/min. Een ruwe schatting, maar wel een leuke om op te volgen.</p></div>
+  </section>
+</div>
+
+<script>
+(function(){
+"use strict";
+// ---------- Yo-Yo IR1 level table (91 shuttles, 40 m each) ----------
+const SPEED_KMH={5:10,9:12,11:13,12:13.5,13:14,14:14.5,15:15,16:15.5,17:16,18:16.5,19:17,20:17.5,21:18,22:18.5,23:19};
+const SHUTTLES=[[5,1],[9,1],[11,2],[12,3],[13,4]];for(let s=14;s<=23;s++)SHUTTLES.push([s,8]);
+const LEVELS=[];SHUTTLES.forEach(([sp,n])=>{for(let i=1;i<=n;i++)LEVELS.push({code:sp+"."+i,speed:sp,kmh:SPEED_KMH[sp],idx:LEVELS.length+1,dist:(LEVELS.length+1)*40});});
+const BY_CODE=Object.fromEntries(LEVELS.map(l=>[l.code,l]));
+const startOf=sp=>LEVELS.find(l=>l.speed===sp);
+
+const $=id=>document.getElementById(id);
+const fmtM=m=>m.toLocaleString("nl-BE")+" m";
+const slug=s=>s.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"x";
+const vo2=d=>(d*0.0084+36.4).toFixed(1).replace(".",",");
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const MONTHS=["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
+const shortDate=iso=>{const d=new Date(iso+"T12:00:00");return MONTHS[d.getMonth()]+" '"+String(d.getFullYear()).slice(2);};
+const longDate=iso=>new Date(iso+"T12:00:00").toLocaleDateString("nl-BE",{weekday:"long",day:"numeric",month:"long"});
+
+let tests=[];   // [{id,date,label}] sorted by date
+let results=[]; // [{name,test,level,dist}]
+let mySlug=null;
+try{mySlug=localStorage.getItem("yoyo-me");}catch(e){}
+
+// shuttle strip
+(function(){const s=$("shuttle");for(let i=0;i<24;i++){const b=document.createElement("i");if(i<17){b.className="on";b.style.animationDelay=(i*45)+"ms";}s.appendChild(b);}})();
+
+// level select
+(function(){const sel=$("fLevel");sel.innerHTML='<option value="">Kies je niveau</option>';
+  let grp=null,cur=null;
+  LEVELS.forEach(l=>{if(l.speed!==cur){cur=l.speed;grp=document.createElement("optgroup");grp.label="Niveau "+l.speed+" · "+String(l.kmh).replace(".",",")+" km/u";sel.appendChild(grp);}
+    const o=document.createElement("option");o.value=l.code;o.textContent=l.code+"  ·  "+fmtM(l.dist);grp.appendChild(o);});
+})();
+
+// ---------- model ----------
+function model(){
+  const order=Object.fromEntries(tests.map((t,i)=>[t.id,i]));
+  const players={};
+  results.forEach(r=>{
+    if(!(r.test in order)||!BY_CODE[r.level])return;
+    const k=slug(r.name);
+    (players[k]=players[k]||{key:k,name:r.name.trim(),runs:[]}).runs.push({ti:order[r.test],level:r.level,dist:BY_CODE[r.level].dist});
+  });
+  const list=Object.values(players);
+  list.forEach(p=>{p.runs.sort((a,b)=>a.ti-b.ti);p.last=p.runs[p.runs.length-1];p.prev=p.runs.length>1?p.runs[p.runs.length-2]:null;
+    p.best=Math.max(...p.runs.map(r=>r.dist));p.delta=p.prev?p.last.dist-p.prev.dist:null;
+    p.isPR=p.prev&&p.last.dist>Math.max(...p.runs.slice(0,-1).map(r=>r.dist));});
+  const withData=tests.map((t,i)=>list.some(p=>p.runs.some(r=>r.ti===i)));
+  let latest=-1;withData.forEach((h,i)=>{if(h)latest=i;});
+  return {list,latest};
+}
+function cls(ti){const n=tests.length;return ti===n-1?"d2":ti===n-2?"d1":"d0";}
+
+// ---------- render ----------
+function render(){
+  const {list,latest}=model();
+  const next=tests[tests.length-1];
+
+  // legend
+  $("legend").innerHTML=tests.map((t,i)=>`<span><i class="dot ${cls(i)}"></i>${esc(t.label||shortDate(t.date))}</span>`).join("");
+
+  // CTA + form label
+  if(next){
+    const today=new Date().toISOString().slice(0,10);
+    const n=list.filter(p=>p.runs.some(r=>r.ti===tests.length-1)).length;
+    $("ctaTitle").textContent=(next.date>=today?"Test op ":"Test van ")+longDate(next.date);
+    $("ctaText").textContent=n?`${n} ${n===1?"loper heeft":"lopers hebben"} al een score ingevuld. Jij ook?`:"Na de test vul je hier zelf je eindniveau in. Zien we je vooruitgang?";
+    $("formTest").textContent=(next.label||"Nieuwe test")+" · "+longDate(next.date);
+  }
+
+  // stats
+  if(!list.length){$("stats").innerHTML='<div class="stat"><b>0</b><small>Nog geen resultaten. Vul hieronder de eerste score in.</small></div>';}
+  else{
+    const lt=latest, inLatest=list.filter(p=>p.last.ti===lt);
+    const reps=inLatest.filter(p=>p.prev);
+    const avgGain=reps.length?Math.round(reps.reduce((s,p)=>s+p.delta,0)/reps.length):null;
+    const up=reps.filter(p=>p.delta>0).length;
+    const top=list.slice().sort((a,b)=>b.best-a.best)[0];
+    const topRun=top.runs.find(r=>r.dist===top.best);
+    const cells=[];
+    const prs=inLatest.filter(p=>p.isPR).length;
+    if(avgGain!==null&&avgGain<=0&&prs)cells.push(`<div class="stat"><b class="hot">${prs}</b><small>nieuwe persoonlijke ${prs===1?"record":"records"} op ${esc(tests[lt].label||shortDate(tests[lt].date))}</small></div>`);
+    else if(avgGain!==null&&avgGain>0)cells.push(`<div class="stat"><b class="hot">${avgGain>=0?"+":""}${fmtM(avgGain)}</b><small>Gemiddelde vooruitgang van wie ${esc(tests[lt].label||shortDate(tests[lt].date))} opnieuw liep</small></div>`);
+    if(reps.length)cells.push(`<div class="stat"><b>${up}/${reps.length}</b><small>herhalers liepen verder dan de vorige keer</small></div>`);
+    cells.push(`<div class="stat"><b>${list.length}</b><small>verschillende lopers in ${tests.filter((t,i)=>list.some(p=>p.runs.some(r=>r.ti===i))).length} tests</small></div>`);
+    cells.push(`<div class="stat"><b>${topRun.level}</b><small>Clubrecord: ${esc(top.name)}, ${fmtM(top.best)} (VO₂max ± ${vo2(top.best)})</small></div>`);
+    $("stats").innerHTML=cells.join("");
+  }
+
+  // risers: biggest gains in latest test with repeaters
+  const reps=list.filter(p=>p.prev&&p.last.ti===latest).sort((a,b)=>b.delta-a.delta).filter(p=>p.delta>0).slice(0,3);
+  if(reps.length){
+    $("riserNote").textContent="t.o.v. hun vorige test";
+    $("risers").innerHTML=reps.map((p,i)=>`<div class="riser"><span class="rank">#${i+1}</span><span class="who">${esc(p.name)}</span><span class="gain">+${fmtM(p.delta)}</span><span class="path">${p.prev.level} → ${p.last.level} · ${p.delta/40} shuttles extra</span></div>`).join("");
+  }else{$("riserNote").textContent="";$("risers").innerHTML='<p class="muted">Zodra iemand voor de tweede keer loopt, verschijnen hier de stijgers.</p>';}
+
+  // board
+  const maxBest=list.length?Math.max(...list.map(p=>p.best)):0;
+  const hiSpeed=Math.max(20,maxBest?LEVELS[maxBest/40-1].speed+1:20);
+  const R=hiSpeed>23?LEVELS[LEVELS.length-1].dist:startOf(hiSpeed).dist;
+  const minD=list.length?Math.min(...list.map(p=>Math.min(...p.runs.map(r=>r.dist)))):320;
+  const L=Math.min(startOf(13).dist-40,minD-40);
+  const pct=d=>((d-L)/(R-L)*100).toFixed(2)+"%";
+  const ticks=[];for(let s=13;s<=23;s++){const st=startOf(s);if(st&&st.dist>=L&&st.dist<=R)ticks.push(st);}
+  const tickHtml=ticks.map(t=>`<span class="tick" style="left:${pct(t.dist)}"></span>`).join("");
+  // rank by most recent dist, ties share position, regardless of which test
+  const byDist=list.slice().sort((a,b)=>b.last.dist-a.last.dist);
+  const ranked=byDist; let pos=0,prevD=null;
+  ranked.forEach((p,i)=>{if(p.last.dist!==prevD){pos=i+1;prevD=p.last.dist;}p.pos=pos;});
+  if(!list.length){$("board").innerHTML='<div class="empty">Nog geen resultaten. Vul hieronder de eerste score in.</div>';}
+  else{
+    let html=`<div class="axis"><span class="spacer"></span><div class="track">${ticks.map(t=>`<span class="lab" style="left:${pct(t.dist)}">${t.speed}</span>`).join("")}</div><span class="spacer"></span></div>`;
+    ranked.forEach(p=>{
+      const ds=p.runs.map(r=>r.dist), a=Math.min(...ds), b=Math.max(...ds);
+      const up=p.delta>0;
+      const seg=p.runs.length>1?`<span class="seg ${up?"up":""}" style="left:${pct(a)};width:calc(${pct(b)} - ${pct(a)})"></span>`:"";
+      const marks=p.runs.map(r=>`<span class="m dot ${cls(r.ti)}" style="left:${pct(r.dist)}" title="${esc((tests[r.ti].label||shortDate(tests[r.ti].date))+": "+r.level+" · "+fmtM(r.dist))}"></span>`).join("");
+      const chip=p.isPR?'<span class="chip pr">PR</span>':(!p.prev&&p.last.ti===tests.length-1&&tests.length>1?'<span class="chip new">Nieuw</span>':"");
+      const sub=p.delta!==null?`<small class="${up?"up":""}">${p.delta>0?"+":p.delta<0?"−":"±"}${fmtM(Math.abs(p.delta))}</small>`:`<small>${esc(shortDate(tests[p.last.ti].date))}</small>`;
+      html+=`<div class="row${p.key===mySlug?" me":""}"><span class="name"><span class="pos">${p.pos}</span><span style="overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</span>${chip}</span><div class="track">${tickHtml}${seg}${marks}</div><span class="val"><b>${p.last.level}</b>${sub}</span></div>`;
+    });
+    $("board").innerHTML=html;
+  }
+
+  // datalist
+  $("names").innerHTML=list.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${esc(p.name)}"></option>`).join("");
+  nameHint();
+}
+
+function playerByName(n){const {list}=model();return list.find(p=>p.key===slug(n));}
+function nameHint(){
+  const v=$("fName").value.trim();if(!v){$("nameHint").textContent="";return;}
+  const p=playerByName(v);
+  if(!p){$("nameHint").textContent="Nieuwe naam: welkom bij je eerste Yo-Yo!";return;}
+  const prevRuns=p.runs.filter(r=>r.ti<tests.length-1);
+  const cur=p.runs.find(r=>r.ti===tests.length-1);
+  const best=prevRuns.length?prevRuns.reduce((a,b)=>b.dist>a.dist?b:a):null;
+  $("nameHint").textContent=(best?`Te kloppen: ${best.level} (${fmtM(best.dist)}). `:"")+(cur?`Al ingevuld: ${cur.level}.`:"");
+}
+$("fName").addEventListener("input",nameHint);
+$("fLevel").addEventListener("change",()=>{const l=BY_CODE[$("fLevel").value];$("levelHint").textContent=l?`${fmtM(l.dist)} · eindsnelheid ${String(l.kmh).replace(".",",")} km/u · VO₂max ± ${vo2(l.dist)}`:"";});
+
+// ---------- confetti (one celebratory moment) ----------
+function burst(){
+  if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const c=$("fx"),ctx=c.getContext("2d");c.hidden=false;
+  const W=c.width=innerWidth*devicePixelRatio,H=c.height=innerHeight*devicePixelRatio;
+  const cs=getComputedStyle(document.documentElement);
+  const cols=[cs.getPropertyValue("--accent"),cs.getPropertyValue("--mid"),cs.getPropertyValue("--old")].map(s=>s.trim());
+  const ps=Array.from({length:120},()=>({x:W/2,y:H*0.7,vx:(Math.random()-.5)*W*0.025,vy:-Math.random()*H*0.03-H*0.01,r:Math.random()*6+3,c:cols[Math.floor(Math.random()*3)],a:Math.random()*6}));
+  let f=0;(function tick(){ctx.clearRect(0,0,W,H);ps.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=H*0.0009;p.a+=0.2;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle=p.c;ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r*devicePixelRatio);ctx.restore();});
+    if(++f<110)requestAnimationFrame(tick);else{ctx.clearRect(0,0,W,H);c.hidden=true;}})();
+}
+
+// ---------- Google Sheet via Apps Script ----------
+// Plak hier de URL van je Apps Script-webapp (eindigt op /exec):
+const API_URL="https://script.google.com/macros/s/AKfycbynKMmSWcwkvEtHUY5AO2EIKW7hgdxXwR8sY5VLVjovWByrhzMbDq8FLXj-E5FovHtJhw/exec";
+
+function apply(data){
+  tests=(data.tests||[]).filter(t=>t.id&&t.date).sort((a,b)=>a.date.localeCompare(b.date));
+  results=(data.results||[]).filter(r=>r&&r.name&&r.level);
+  render();
+}
+async function load(){
+  try{const r=await fetch(API_URL,{cache:"no-store"});if(!r.ok)throw 0;apply(await r.json());}
+  catch(_){if(!results.length){$("board").innerHTML='<div class="empty">De resultaten konden niet geladen worden. Herlaad de pagina.</div>';$("stats").innerHTML='<div class="stat"><b>–</b><small>Resultaten niet bereikbaar</small></div>';}}
+}
+
+$("form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const name=$("fName").value.trim().replace(/\s+/g," "), lvl=BY_CODE[$("fLevel").value], test=tests[tests.length-1];
+  const msg=$("fMsg");msg.className="msg";
+  if(!name){msg.textContent="Vul je naam in.";msg.classList.add("err");$("fName").focus();return;}
+  if(!lvl){msg.textContent="Kies je eindniveau.";msg.classList.add("err");$("fLevel").focus();return;}
+  if(!test){msg.textContent="Er is nog geen test gepland.";msg.classList.add("err");return;}
+  const existing=playerByName(name);
+  const displayName=existing?existing.name:name;
+  const prevRuns=existing?existing.runs.filter(r=>r.ti<tests.length-1):[];
+  const already=existing&&existing.runs.some(r=>r.ti===tests.length-1);
+  $("fSubmit").disabled=true;msg.textContent="Opslaan…";
+  try{
+    const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({name:displayName,test:test.id,level:lvl.code})});
+    const data=await r.json();
+    if(!data.ok)throw new Error(data.error||"");
+    try{localStorage.setItem("yoyo-me",slug(name));}catch(_){}
+    mySlug=slug(name);
+    apply(data);
+    msg.textContent=already?"Score bijgewerkt.":"Opgeslagen.";
+    const last=prevRuns[prevRuns.length-1], best=prevRuns.length?Math.max(...prevRuns.map(r=>r.dist)):null;
+    let head,sub;
+    if(!last){head=`Welkom op de baan, ${esc(displayName)}!`;sub=`${lvl.code} = ${fmtM(lvl.dist)}. Dat is je startpunt; de volgende test kloppen we het.`;}
+    else{const d=lvl.dist-last.dist;
+      if(d>0){head=`+${fmtM(d)}, ${esc(displayName)}!`;sub=`Van ${last.level} naar ${lvl.code}: ${d/40} shuttles meer dan de vorige keer.${best!==null&&lvl.dist>best?" Nieuw persoonlijk record.":""}`;}
+      else if(d===0){head=`Exact even ver, ${esc(displayName)}.`;sub=`Opnieuw ${lvl.code}. Stabiel is ook sterk.`;}
+      else{const bestRun=prevRuns.reduce((a,b)=>b.dist>a.dist?b:a);head=`Genoteerd, ${esc(displayName)}.`;sub=`${lvl.code} deze keer, vorige keer ${last.level}. Je record van ${bestRun.level} blijft gewoon staan. Een mindere dag zegt weinig; de volgende test telt weer.`;}
+    }
+    $("done").innerHTML=`<b>${head}</b><span>${sub}</span>`;$("done").hidden=false;
+    if(!last||lvl.dist>last.dist)burst();
+  }catch(err){
+    msg.textContent=(err&&err.message)||"Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.";msg.classList.add("err");
+  }finally{$("fSubmit").disabled=false;}
+});
+
+load();
+setInterval(()=>{if(document.visibilityState==="visible")load();},60000);
+})();
+</script>
+</body>
+</html>
