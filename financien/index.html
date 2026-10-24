@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flyovers – Financieel dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  color-scheme: light;
+  --page:#f9f9f7; --surface:#fcfcfb; --card:#f3f2ee;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,0.10);
+  --accent:#2a78d6; --accent-ink:#ffffff;
+  --inc:#2a78d6; --exp:#eb6834;
+  --inc-text:#1c5cab; --exp-text:#b6461b;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s-other:#b3b1aa;
+  --danger:#d03b3b;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --card:#242422;
+    --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+    --accent:#3987e5;
+    --inc:#3987e5; --exp:#d95926;
+    --inc-text:#86b6ef; --exp-text:#f0a07e;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s-other:#5e5d58;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;color:var(--ink);background:var(--page);line-height:1.4}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.eyebrow{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.meta{font-size:12px;color:var(--muted);margin-top:2px}
+.head-actions{display:flex;gap:8px;align-items:center}
+button{font:inherit;font-size:13px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--axis)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:disabled{opacity:.5;cursor:default}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--grid);margin-bottom:18px}
+.tab{border:none;background:none;border-radius:0;padding:9px 14px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.active{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.hidden{display:none!important}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.fg{display:flex;flex-direction:column;gap:3px;min-width:150px;flex:1}
+.fg.shrink{flex:0 0 auto;min-width:0}
+.fg label{font-size:11px;color:var(--muted)}
+select,input{font:inherit;font-size:13px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--ink);width:100%}
+select:focus,input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.seg{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:none;border-radius:0;padding:7px 12px;color:var(--ink-2);background:transparent}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.card{background:var(--card);border-radius:10px;padding:14px 16px}
+.card .lbl{font-size:12px;color:var(--ink-2);margin-bottom:4px}
+.card .val{font-size:24px;font-weight:600;letter-spacing:-.01em}
+.card .sub{font-size:11px;color:var(--muted);margin-top:2px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.panel h2{font-size:15px;font-weight:600;margin-bottom:2px}
+.panel .hint{font-size:12px;color:var(--muted);margin-bottom:12px}
+.chart-box{position:relative;height:280px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:10px;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.bd-row{display:grid;grid-template-columns:14px minmax(120px,1fr) minmax(80px,180px) 90px 48px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--grid)}
+.bd-row:last-child{border-bottom:none}
+.bd-sw{width:10px;height:10px;border-radius:3px}
+.bd-name{font-size:13px}
+.bd-name small{display:block;font-size:11px;color:var(--muted)}
+.bd-bar{height:8px;background:var(--grid);border-radius:4px;overflow:hidden}
+.bd-bar div{height:100%;border-radius:4px}
+.bd-val{text-align:right;font-variant-numeric:tabular-nums}
+.bd-pct{text-align:right;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);text-align:center;padding:28px 0;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:600;font-size:12px;color:var(--ink-2);padding:8px;border-bottom:1px solid var(--axis);white-space:nowrap;position:sticky;top:0;background:var(--surface)}
+td{padding:8px;border-bottom:1px solid var(--grid);vertical-align:top}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.date{white-space:nowrap;font-variant-numeric:tabular-nums}
+tr.inactive td{color:var(--muted);text-decoration:line-through}
+tr.inactive td.act{text-decoration:none}
+.amt-inc{color:var(--inc-text)} .amt-exp{color:var(--exp-text)}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--card);color:var(--ink-2);white-space:nowrap}
+.note{display:block;font-size:12px;color:var(--muted)}
+.table-wrap{max-height:70vh;overflow:auto}
+.edit-btn{padding:4px 10px;font-size:12px}
+.status-msg{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;background:var(--card)}
+.status-msg.err{color:var(--danger)}
+.loading{padding:60px 0;text-align:center;color:var(--muted)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal{background:var(--surface);border-radius:14px;padding:20px;width:440px;max-width:100%;max-height:92vh;overflow:auto;border:1px solid var(--border)}
+.modal h3{font-size:16px;margin-bottom:4px}
+.modal .sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+.form-row{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.form-row label{font-size:12px;color:var(--ink-2)}
+.form-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.form-err{color:var(--danger);font-size:12px;min-height:16px;margin-top:6px}
+@media (max-width:820px){
+  .cards{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:1fr}
+  .bd-row{grid-template-columns:14px 1fr 80px 44px}
+  .bd-bar{display:none}
+  .hide-sm{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Flyovers Ultimate Frisbee</div>
+      <h1>Financieel dashboard</h1>
+      <div class="meta" id="meta">Data laden…</div>
+    </div>
+    <div class="head-actions">
+      <button id="btn-refresh" type="button" onclick="loadData()">Vernieuwen</button>
+    </div>
+  </header>
+
+  <div class="tabs" id="tabs">
+    <button type="button" class="tab active" data-tab="overview" onclick="showTab('overview')">Overzicht</button>
+    <button type="button" class="tab" data-tab="transactions" onclick="showTab('transactions')">Transacties</button>
+  </div>
+
+  <div id="msg"></div>
+  <div id="loading" class="loading">Data laden…</div>
+
+  <!-- OVERZICHT -->
+  <section id="tab-overview" class="hidden">
+    <div class="filters">
+      <div class="fg"><label for="f-season">Seizoen</label><select id="f-season" onchange="renderOverview()"></select></div>
+      <div class="fg"><label for="f-cat">Categorie</label><select id="f-cat" onchange="renderOverview()"></select></div>
+      <div class="fg shrink"><label>Weergave</label>
+        <div class="seg" role="group" aria-label="Weergave">
+          <button type="button" id="mode-net" class="on" onclick="setMode('net')">Inkomsten/uitgaven</button>
+          <button type="button" id="mode-exp" onclick="setMode('exp')">Alleen uitgaven</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card"><div class="lbl">Inkomsten</div><div class="val" id="k-inc">–</div></div>
+      <div class="card"><div class="lbl">Uitgaven</div><div class="val" id="k-exp">–</div></div>
+      <div class="card"><div class="lbl">Saldo</div><div class="val" id="k-bal">–</div></div>
+      <div class="card"><div class="lbl">Transacties</div><div class="val" id="k-cnt">–</div><div class="sub" id="k-cnt-sub"></div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h2>Uitgaven per categorie</h2>
+        <div class="hint" id="pie-hint"></div>
+        <div class="legend" id="pie-legend"></div>
+        <div class="chart-box"><canvas id="pie" role="img" aria-label="Taartdiagram van de uitgaven per categorie"></canvas></div>
+      </div>
+      <div class="panel">
+        <h2 id="bar-title">Inkomsten en uitgaven</h2>
+        <div class="hint" id="bar-hint"></div>
+        <div class="legend"><span><i style="background:var(--inc)"></i>Inkomsten</span><span><i style="background:var(--exp)"></i>Uitgaven</span></div>
+        <div class="chart-box"><canvas id="bar" role="img" aria-label="Staafdiagram van inkomsten en uitgaven"></canvas></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Verdeling uitgaven</h2>
+      <div class="hint" id="bd-hint"></div>
+      <div id="breakdown"></div>
+    </div>
+  </section>
+
+  <!-- TRANSACTIES -->
+  <section id="tab-transactions" class="hidden">
+    <div class="filters">
+      <div class="fg"><label for="t-search">Zoeken</label><input id="t-search" type="search" placeholder="Naam, beschrijving, notitie…" oninput="renderTransactions()"></div>
+      <div class="fg"><label for="t-season">Seizoen</label><select id="t-season" onchange="renderTransactions()"></select></div>
+      <div class="fg"><label for="t-type">Type</label><select id="t-type" onchange="renderTransactions()"><option value="">Alle types</option><option value="income">Inkomsten</option><option value="expense">Uitgaven</option></select></div>
+      <div class="fg"><label for="t-cat">Categorie</label><select id="t-cat" onchange="renderTransactions()"></select></div>
+      <div class="fg"><label for="t-status">Status</label><select id="t-status" onchange="renderTransactions()"><option value="">Alle statussen</option><option value="active">Actief</option><option value="inactive">Inactief</option></select></div>
+    </div>
+    <div class="panel">
+      <div class="hint" id="t-count"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Datum</th><th>Beschrijving</th><th>Categorie</th><th class="hide-sm">Seizoen</th><th style="text-align:right">Bedrag</th><th class="hide-sm">Status</th><th></th></tr></thead>
+          <tbody id="t-body"></tbody>
+        </table>
+        <div id="t-empty" class="empty hidden">Geen transacties gevonden.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Bewerken -->
+<div id="edit-modal" class="modal-bg hidden" onclick="if(event.target===this)closeEdit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+    <h3 id="edit-title">Transactie aanpassen</h3>
+    <div class="sub" id="edit-sub"></div>
+    <div class="form-row"><label for="e-desc">Beschrijving</label><input id="e-desc" type="text"></div>
+    <div class="form-2">
+      <div class="form-row"><label for="e-type">Type</label><select id="e-type"><option value="income">Inkomst</option><option value="expense">Uitgave</option></select></div>
+      <div class="form-row"><label for="e-status">Status</label><select id="e-status"><option value="active">Actief</option><option value="inactive">Inactief</option></select></div>
+    </div>
+    <div class="form-2">
+      <div class="form-row"><label for="e-cat">Categorie</label><select id="e-cat"></select></div>
+      <div class="form-row"><label for="e-season">Seizoen</label><select id="e-season"></select></div>
+    </div>
+    <div class="form-row"><label for="e-note">Notitie</label><input id="e-note" type="text"></div>
+    <div class="form-err" id="edit-err"></div>
+    <div class="modal-actions">
+      <button type="button" onclick="closeEdit()">Annuleer</button>
+      <button type="button" class="primary" id="edit-ok" onclick="saveEditForm()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   INSTELLING: plak hier de webapp-URL van het Apps Script
+   (Implementeren > Implementaties beheren > URL die eindigt op /exec).
+   ===================================================================== */
+var API_URL = 'https://script.google.com/macros/s/AKfycbzw5oeSnZrzFwW0YSDf7927oIpYalC5ryP9mEbztpfXRP52Xl27WUEzK1QhNvyJdGX_/exec';
+
+var state = { data: null, mode: 'net', editing: null };
+var charts = { pie: null, bar: null };
+var MONTHS = ['sep','okt','nov','dec','jan','feb','mrt','apr','mei','jun','jul','aug'];
+var SLOT_VARS = ['--s1','--s2','--s3','--s4','--s5','--s6','--s7'];
+
+/* ---------- Server ---------- */
+/* fn: 'getData' (geen args) of 'saveEdit' (args: [row, expected, changes]) */
+function call(fn, args, ok, fail) {
+  if (window.MOCK_SERVER) { // enkel voor lokaal testen
+    try { ok(window.MOCK_SERVER[fn].apply(null, args)); } catch (e) { fail(e.message); }
+    return;
+  }
+  if (!/^https:\/\/script\.google\.com\//.test(API_URL)) {
+    fail('De koppeling met de Google Sheet is nog niet ingesteld (API_URL in index.html).');
+    return;
+  }
+  var req;
+  if (fn === 'getData') {
+    req = fetch(API_URL, { method: 'GET' });
+  } else {
+    var body = { action: 'save', row: args[0], expected: args[1], changes: args[2] };
+    // text/plain vermijdt een CORS-preflight, die Apps Script niet ondersteunt.
+    req = fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+  }
+  req.then(function (r) { return r.json(); })
+    .then(function (res) { if (res && res.ok) ok(res.data); else fail((res && res.error) || 'Onbekende fout.'); })
+    .catch(function () { fail('Geen verbinding met de Google Sheet. Controleer je internetverbinding en probeer opnieuw.'); });
+}
+
+function loadData() {
+  setMsg('');
+  document.getElementById('btn-refresh').disabled = true;
+  call('getData', [], function (d) {
+    document.getElementById('btn-refresh').disabled = false;
+    applyData(d);
+  }, function (err) {
+    document.getElementById('btn-refresh').disabled = false;
+    document.getElementById('loading').classList.add('hidden');
+    setMsg('Laden mislukt: ' + err, true);
+  });
+}
+
+function applyData(d) {
+  state.data = d;
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('meta').textContent = 'Bijgewerkt op ' + d.loadedAt;
+  assignColors();
+  fillFilters();
+  var active = document.querySelector('.tab.active');
+  var tab = active ? active.dataset.tab : 'overview';
+  showTab(tab);
+}
+
+/* ---------- Helpers ---------- */
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function fmt(n) { return '€ ' + Math.abs(n).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtShort(n) { return '€ ' + Math.round(n).toLocaleString('nl-BE'); }
+function fmtDate(d) { return d.slice(8, 10) + '-' + d.slice(5, 7) + '-' + d.slice(0, 4); }
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function setMsg(text, isErr) {
+  var el = document.getElementById('msg');
+  el.innerHTML = text ? '<div class="status-msg' + (isErr ? ' err' : '') + '">' + esc(text) + '</div>' : '';
+}
+function seasons() {
+  var set = {};
+  state.data.transactions.forEach(function (t) { if (t.season) set[t.season] = 1; });
+  return Object.keys(set).sort().reverse();
+}
+function allCategories() {
+  var list = state.data.categories.slice();
+  state.data.transactions.forEach(function (t) { if (list.indexOf(t.category) < 0) list.push(t.category); });
+  return list;
+}
+function fillSelect(id, options, allLabel, keep) {
+  var el = document.getElementById(id);
+  var prev = keep ? el.value : '';
+  el.innerHTML = (allLabel ? '<option value="">' + esc(allLabel) + '</option>' : '') +
+    options.map(function (o) { return '<option value="' + esc(o) + '">' + esc(o) + '</option>'; }).join('');
+  if (prev && options.indexOf(prev) >= 0) el.value = prev;
+}
+function fillFilters() {
+  var s = seasons(), c = allCategories().slice().sort(function (a, b) { return a.localeCompare(b, 'nl'); });
+  fillSelect('f-season', s, 'Alle seizoenen', true);
+  fillSelect('f-cat', c, 'Alle categorieën', true);
+  fillSelect('t-season', s, 'Alle seizoenen', true);
+  fillSelect('t-cat', c, 'Alle categorieën', true);
+}
+
+/* Kleur volgt de categorie, niet de rangorde: de 7 grootste uitgavencategorieën over
+   alle data krijgen een vaste kleur, de rest valt samen onder "Overige categorieën". */
+function assignColors() {
+  var tot = {};
+  state.data.transactions.forEach(function (t) {
+    if (t.status === 'active' && t.type === 'expense') tot[t.category] = (tot[t.category] || 0) + t.amount;
+  });
+  var ranked = Object.keys(tot).sort(function (a, b) { return tot[b] - tot[a]; });
+  state.colorOf = {};
+  ranked.slice(0, SLOT_VARS.length).forEach(function (c, i) { state.colorOf[c] = SLOT_VARS[i]; });
+}
+function colorVar(cat) { return state.colorOf[cat] || '--s-other'; }
+
+/* ---------- Tabs & modus ---------- */
+function showTab(name) {
+  ['overview', 'transactions'].forEach(function (n) {
+    document.getElementById('tab-' + n).classList.toggle('hidden', n !== name);
+  });
+  document.querySelectorAll('.tab').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+  if (name === 'overview') renderOverview(); else renderTransactions();
+}
+function setMode(m) {
+  state.mode = m;
+  document.getElementById('mode-net').classList.toggle('on', m === 'net');
+  document.getElementById('mode-exp').classList.toggle('on', m === 'exp');
+  renderOverview();
+}
+
+/* ---------- Overzicht ---------- */
+function renderOverview() {
+  if (!state.data) return;
+  var season = document.getElementById('f-season').value;
+  var cat = document.getElementById('f-cat').value;
+  var all = state.data.transactions;
+  var tx = all.filter(function (t) { return t.status === 'active' && (!season || t.season === season) && (!cat || t.category === cat); });
+  var inactive = all.filter(function (t) { return t.status === 'inactive' && (!season || t.season === season) && (!cat || t.category === cat); }).length;
+
+  var inc = 0, exp = 0;
+  tx.forEach(function (t) { if (t.type === 'income') inc += t.amount; else exp += t.amount; });
+  document.getElementById('k-inc').textContent = fmt(inc);
+  document.getElementById('k-exp').textContent = fmt(exp);
+  var bal = inc - exp;
+  document.getElementById('k-bal').textContent = (bal < 0 ? '− ' : '') + fmt(bal);
+  document.getElementById('k-cnt').textContent = tx.length;
+  document.getElementById('k-cnt-sub').textContent = inactive ? inactive + ' inactief, niet meegeteld' : '';
+
+  // Per categorie
+  var expMap = {}, incMap = {};
+  tx.forEach(function (t) {
+    var m = t.type === 'expense' ? expMap : incMap;
+    m[t.category] = (m[t.category] || 0) + t.amount;
+  });
+  var catMap = {};
+  if (state.mode === 'net') {
+    Object.keys(expMap).concat(Object.keys(incMap)).forEach(function (c) {
+      var net = (expMap[c] || 0) - (incMap[c] || 0);
+      if (net > 0.004) catMap[c] = net;
+    });
+  } else {
+    Object.keys(expMap).forEach(function (c) { catMap[c] = expMap[c]; });
+  }
+  var labels = Object.keys(catMap).sort(function (a, b) { return catMap[b] - catMap[a]; });
+  var total = labels.reduce(function (s, l) { return s + catMap[l]; }, 0);
+
+  document.getElementById('pie-hint').textContent = state.mode === 'net'
+    ? 'Netto kost per categorie: uitgaven min wat leden er zelf voor betaalden. Categorieën met netto winst staan er niet in.'
+    : 'Alle uitgaven per categorie, zonder rekening te houden met inkomsten.';
+  document.getElementById('bd-hint').textContent = document.getElementById('pie-hint').textContent;
+
+  // Taart: de 7 vaste kleuren + "Overige categorieën"
+  var pieLabels = [], pieVals = [], pieColors = [], other = 0, otherNames = [];
+  labels.forEach(function (l) {
+    if (state.colorOf[l]) { pieLabels.push(l); pieVals.push(catMap[l]); pieColors.push(cssVar(state.colorOf[l])); }
+    else { other += catMap[l]; otherNames.push(l); }
+  });
+  if (other > 0) { pieLabels.push('Overige categorieën'); pieVals.push(other); pieColors.push(cssVar('--s-other')); }
+
+  document.getElementById('pie-legend').innerHTML = pieLabels.map(function (l, i) {
+    return '<span><i style="background:' + pieColors[i] + '"></i>' + esc(l) + '</span>';
+  }).join('');
+
+  if (charts.pie) charts.pie.destroy();
+  charts.pie = new Chart(document.getElementById('pie'), {
+    type: 'pie',
+    data: { labels: pieLabels, datasets: [{ data: pieVals, backgroundColor: pieColors, borderColor: cssVar('--surface'), borderWidth: 2 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: function (c) { return ' ' + c.label + ': ' + fmt(c.raw) + ' (' + (total ? (c.raw / total * 100).toFixed(1) : 0) + '%)'; },
+          afterLabel: function (c) { return c.label === 'Overige categorieën' ? otherNames.join(', ') : ''; }
+        } }
+      }
+    }
+  });
+  if (!labels.length) document.getElementById('pie-legend').innerHTML = '<span>Geen uitgaven voor deze selectie.</span>';
+
+  renderBar(tx, season);
+
+  // Verdeling (ook de tabelweergave van de taart)
+  document.getElementById('breakdown').innerHTML = labels.length ? labels.map(function (l) {
+    var net = catMap[l], gross = expMap[l] || 0, got = incMap[l] || 0;
+    var extra = (state.mode === 'net' && got > 0) ? '<small>uitgegeven ' + fmt(gross) + ', ontvangen ' + fmt(got) + '</small>' : '';
+    var col = 'var(' + colorVar(l) + ')';
+    var pct = total ? net / total * 100 : 0;
+    return '<div class="bd-row"><div class="bd-sw" style="background:' + col + '"></div>' +
+      '<div class="bd-name">' + esc(l) + extra + '</div>' +
+      '<div class="bd-bar"><div style="width:' + pct.toFixed(1) + '%;background:' + col + '"></div></div>' +
+      '<div class="bd-val">' + fmt(net) + '</div><div class="bd-pct">' + pct.toFixed(1) + '%</div></div>';
+  }).join('') : '<div class="empty">Geen uitgaven voor deze selectie.</div>';
+}
+
+function renderBar(tx, season) {
+  var labels, inc, exp;
+  if (season) {
+    // Per maand binnen het seizoen (september tot augustus)
+    labels = MONTHS.slice();
+    inc = new Array(12).fill(0); exp = new Array(12).fill(0);
+    tx.forEach(function (t) {
+      var m = parseInt(t.date.slice(5, 7), 10);
+      var i = (m + 3) % 12; // sep=0 … aug=11
+      if (t.type === 'income') inc[i] += t.amount; else exp[i] += t.amount;
+    });
+    document.getElementById('bar-title').textContent = 'Inkomsten en uitgaven per maand';
+    document.getElementById('bar-hint').textContent = 'Seizoen ' + season + ', van september tot augustus.';
+  } else {
+    labels = seasons().slice().reverse();
+    inc = labels.map(function () { return 0; }); exp = labels.map(function () { return 0; });
+    tx.forEach(function (t) {
+      var i = labels.indexOf(t.season);
+      if (i < 0) return;
+      if (t.type === 'income') inc[i] += t.amount; else exp[i] += t.amount;
+    });
+    document.getElementById('bar-title').textContent = 'Inkomsten en uitgaven per seizoen';
+    document.getElementById('bar-hint').textContent = 'Kies een seizoen om de verdeling per maand te zien.';
+  }
+  var grid = cssVar('--grid'), muted = cssVar('--muted');
+  if (charts.bar) charts.bar.destroy();
+  charts.bar = new Chart(document.getElementById('bar'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [
+      { label: 'Inkomsten', data: inc, backgroundColor: cssVar('--inc'), borderRadius: 4, borderSkipped: 'start', maxBarThickness: 36 },
+      { label: 'Uitgaven', data: exp, backgroundColor: cssVar('--exp'), borderRadius: 4, borderSkipped: 'start', maxBarThickness: 36 }
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: function (c) { return ' ' + c.dataset.label + ': ' + fmt(c.raw); },
+        footer: function (items) { var d = (items[0] ? items[0].raw : 0) - (items[1] ? items[1].raw : 0); return 'Saldo: ' + (d < 0 ? '− ' : '') + fmt(d); }
+      } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: muted }, border: { color: cssVar('--axis') } },
+        y: { beginAtZero: true, grid: { color: grid }, border: { display: false }, ticks: { color: muted, callback: function (v) { return fmtShort(v); } } }
+      }
+    }
+  });
+}
+
+/* ---------- Transacties ---------- */
+function renderTransactions() {
+  if (!state.data) return;
+  var q = document.getElementById('t-search').value.trim().toLowerCase();
+  var season = document.getElementById('t-season').value;
+  var type = document.getElementById('t-type').value;
+  var cat = document.getElementById('t-cat').value;
+  var status = document.getElementById('t-status').value;
+  var tx = state.data.transactions.filter(function (t) {
+    if (season && t.season !== season) return false;
+    if (type && t.type !== type) return false;
+    if (cat && t.category !== cat) return false;
+    if (status && t.status !== status) return false;
+    if (q && (t.description + ' ' + t.note + ' ' + t.category).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  }).sort(function (a, b) { return b.date.localeCompare(a.date) || b.row - a.row; });
+
+  document.getElementById('t-count').textContent = tx.length + ' transactie' + (tx.length === 1 ? '' : 's');
+  document.getElementById('t-empty').classList.toggle('hidden', tx.length > 0);
+  document.getElementById('t-body').innerHTML = tx.map(function (t) {
+    var cls = t.type === 'income' ? 'amt-inc' : 'amt-exp';
+    return '<tr class="' + (t.status === 'inactive' ? 'inactive' : '') + '">' +
+      '<td class="date">' + fmtDate(t.date) + '</td>' +
+      '<td>' + esc(t.description) + (t.note ? '<span class="note">' + esc(t.note) + '</span>' : '') + '</td>' +
+      '<td><span class="pill">' + esc(t.category) + '</span></td>' +
+      '<td class="hide-sm">' + esc(t.season) + (t.seasonOverride ? ' *' : '') + '</td>' +
+      '<td class="num ' + cls + '">' + (t.type === 'income' ? '+ ' : '− ') + fmt(t.amount) + '</td>' +
+      '<td class="hide-sm">' + (t.status === 'inactive' ? 'Inactief' : 'Actief') + '</td>' +
+      '<td class="act"><button type="button" class="edit-btn" onclick="openEdit(' + t.row + ')">Aanpassen</button></td></tr>';
+  }).join('');
+}
+
+/* ---------- Bewerken ---------- */
+function seasonForDate(d) {
+  var y = parseInt(d.slice(0, 4), 10), m = parseInt(d.slice(5, 7), 10);
+  var s = m >= 9 ? y : y - 1;
+  return s + '-' + (s + 1);
+}
+function openEdit(row) {
+  var t = state.data.transactions.filter(function (x) { return x.row === row; })[0];
+  if (!t) return;
+  state.editing = t;
+  document.getElementById('edit-sub').textContent = fmtDate(t.date) + ' · ' + (t.type === 'income' ? '+ ' : '− ') + fmt(t.amount);
+  document.getElementById('e-desc').value = t.description;
+  document.getElementById('e-type').value = t.type;
+  document.getElementById('e-status').value = t.status;
+  document.getElementById('e-note').value = t.note || '';
+  var cats = state.data.categories.slice();
+  if (cats.indexOf(t.category) < 0) cats.push(t.category);
+  document.getElementById('e-cat').innerHTML = cats.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
+  document.getElementById('e-cat').value = t.category;
+  // Seizoen: automatisch volgens datum, of een ander seizoen kiezen
+  var auto = seasonForDate(t.date);
+  var y0 = 2024, y1 = new Date().getFullYear() + 1, opts = '<option value="">Automatisch (' + auto + ')</option>';
+  for (var y = y1; y >= y0; y--) { var s = y + '-' + (y + 1); if (s !== auto) opts += '<option value="' + s + '">' + s + '</option>'; }
+  document.getElementById('e-season').innerHTML = opts;
+  document.getElementById('e-season').value = (t.seasonOverride && t.seasonOverride !== auto) ? t.seasonOverride : '';
+  document.getElementById('edit-err').textContent = '';
+  document.getElementById('edit-modal').classList.remove('hidden');
+}
+function closeEdit() { document.getElementById('edit-modal').classList.add('hidden'); state.editing = null; }
+function saveEditForm() {
+  var t = state.editing; if (!t) return;
+  var ch = {};
+  var desc = document.getElementById('e-desc').value.trim();
+  if (!desc) { document.getElementById('edit-err').textContent = 'De beschrijving mag niet leeg zijn.'; return; }
+  if (desc !== t.description) ch.description = desc;
+  var v;
+  if ((v = document.getElementById('e-type').value) !== t.type) ch.type = v;
+  if ((v = document.getElementById('e-status').value) !== t.status) ch.status = v;
+  if ((v = document.getElementById('e-cat').value) !== t.category) ch.category = v;
+  if ((v = document.getElementById('e-note').value.trim()) !== (t.note || '')) ch.note = v;
+  if ((v = document.getElementById('e-season').value) !== (t.seasonOverride || '')) ch.seasonOverride = v;
+  if (!Object.keys(ch).length) { closeEdit(); return; }
+  var btn = document.getElementById('edit-ok'); btn.disabled = true; btn.textContent = 'Opslaan…';
+  call('saveEdit', [t.row, { date: t.date, amount: t.amount }, ch], function (d) {
+    btn.disabled = false; btn.textContent = 'Opslaan';
+    closeEdit();
+    applyData(d);
+    setMsg('Opgeslagen in de Google Sheet.');
+    setTimeout(function () { setMsg(''); }, 3000);
+  }, function (err) {
+    btn.disabled = false; btn.textContent = 'Opslaan';
+    document.getElementById('edit-err').textContent = err;
+  });
+}
+
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeEdit(); });
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { if (state.data) showTab(document.querySelector('.tab.active').dataset.tab); });
+}
+loadData();
+</script>
+</body>
+</html>
